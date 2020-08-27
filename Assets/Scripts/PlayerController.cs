@@ -141,8 +141,8 @@ public class PlayerController : MonoBehaviour
         // Jump if we are on the ground, or if within COYOTE_TIME frames.
 
 
-        // Holding down to CROUCH while on the ground.
-        if (state == MotionState.GROUNDED) crouching = playerInfluence.y < 0 ? true : false;
+        // Holding down to CROUCH while on the ground and you are not dashing into the ground.
+        if (state == MotionState.GROUNDED && !isDashing) crouching = playerInfluence.y < 0 ? true : false;
         if (playerInfluence.x > 0) facingRight = true;
         if (playerInfluence.x < 0) facingRight = false;
     }
@@ -241,11 +241,12 @@ public class PlayerController : MonoBehaviour
         // If we are on the ground and we press dash, perform a ground dash instead.
         if (playerInfluence.y < 0 && state == MotionState.GROUNDED)
         {
+            dashDir = GetForwardVector();
             Debug.Log("Crouch slide!");
             CrouchSlide();
             return;
         }
-        StartCoroutine(DashTimerCoroutine());
+        StartCoroutine(DashCoroutine(false));
     }
 
     /*
@@ -256,17 +257,18 @@ public class PlayerController : MonoBehaviour
     private void CrouchSlide()
     {
         // Extra logic for altered hitboxes, animations, and stats.
-        StartCoroutine(DashTimerCoroutine());
+        StartCoroutine(DashCoroutine(true));
     }
 
     /*
      * Moves the player in the direction provided, with magnitude = dashSpeed.
      * NOTE: |dir| = 1, if x and y are non-zero, they will be ~0.71 (sine/cosine at 45 degree notches).
      */
-    private IEnumerator DashTimerCoroutine()
+    private IEnumerator DashCoroutine(bool crouched)
     {
         currentDashTime = dashTime;
         while(currentDashTime > 0) {
+            crouching = crouched;
             //if (rb.IsTouchingLayers(terrainLayer) && state == MotionState.GROUNDED)
             //{
             //    EndDash();
@@ -304,13 +306,13 @@ public class PlayerController : MonoBehaviour
         float total = 0f;
 
         // Overrides
-        if (isDashing)
-        {
-            return dashDir.x * dashSpeed;
-        }
-        else if (isDashing && crouching)
+        if (isDashing && crouching)
         {
             return GetForwardVector().x * dashSpeed * 1.1f;
+        }
+        else if (isDashing)
+        {
+            return dashDir.x * dashSpeed;
         }
 
         // Compounds

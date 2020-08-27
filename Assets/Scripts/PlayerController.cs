@@ -20,30 +20,37 @@ public class PlayerController : MonoBehaviour
     private CircleCollider2D mainCollider;
     private BoxCollider2D headCollider;
 
-    private const int COYOTE_TIME = 10;
+    private const float COYOTE_TIME = 5f / 60f;
     private const float CROUCH_SPEED_MULT = 0.5f;
-    private const float BASE_GRAVITY = 5f;
 
+    [Header("Runtime Statistics")]
     [SerializeField] private MotionState state;
-    [SerializeField] private float runSpeed;
-    [SerializeField] private float jumpVelocity;
-    [SerializeField] private float dashTime;
-    [SerializeField] private float currentDashTime;
-    [SerializeField] private float dashSpeed;
-    [SerializeField] private float jumpTime;
-    [SerializeField] private float jumpTimeCounter;
-    [SerializeField] private Vector2 playerInfluence = Vector2.zero;
-    [SerializeField] private int subAirTime = 0;
-    [SerializeField] private int totalAirTime = 0;
-    [SerializeField] private int maxJumps;
-    [SerializeField] private int jumps;
-    [SerializeField] private int maxDashes;
-    [SerializeField] private int dashes;
+    [SerializeField] private Vector2 currentVelocity = Vector2.zero;
     [SerializeField] private bool crouching = false;
     [SerializeField] private bool facingRight = true;
     [SerializeField] private bool isJumping = false;
     [SerializeField] private bool isDashing = false;
-    [SerializeField] private Vector2 currentVelocity = Vector2.zero;
+    [SerializeField] private bool allowPlayerInfluence = true;
+    [SerializeField] private int jumps;
+    [SerializeField] private int dashes;
+
+    [Header("Parameters")]
+    [SerializeField] private float runSpeed;
+    [SerializeField] private float jumpVelocity;
+    [SerializeField] private float dashSpeed;
+    [SerializeField] private int maxJumps;
+    [SerializeField] private int maxDashes;
+    [SerializeField] private float jumpTime;
+    [SerializeField] private float gravityCoeff;
+
+    [Header("Runtime Trackers")]
+    [SerializeField] private float subAirTime = 0;
+    [SerializeField] private float totalAirTime = 0;
+    [SerializeField] private float dashTime;
+    [SerializeField] private float currentDashTime;
+    [SerializeField] private float jumpTimeCounter;
+    [SerializeField] private Vector2 playerInfluence = Vector2.zero;
+    [SerializeField] private Vector2 dashDir = Vector2.zero;
 
     private void Awake()
     {
@@ -108,7 +115,7 @@ public class PlayerController : MonoBehaviour
                 jumps--;
             }
             state = MotionState.AIR;
-            subAirTime++;
+            subAirTime += Time.deltaTime;
         }
 
         if (ceilingCheck.collider != null)
@@ -135,15 +142,18 @@ public class PlayerController : MonoBehaviour
 
         // Holding down to CROUCH.
         crouching = playerInfluence.y < 0 ? true : false;
+        if (playerInfluence.x > 0) facingRight = true;
+        if (playerInfluence.x < 0) facingRight = false;
     }
 
     private void FixedUpdate()
     {
         Vector2 finalVelocity = new Vector2(
             CompoundXVelocities() * Time.deltaTime,
+            CompoundYVelocities() * Time.deltaTime
            // isJumping ? jumpVelocity : 0f
            // ((subAirTime * -0.918f) + (yInfluence * jumpVelocity)) * Time.deltaTime
-           rb.velocity.y
+           //rb.velocity.y
         );
         currentVelocity = finalVelocity;
         // Vector2.SmoothDamp(rb.velocity, finalVelocity, ref currentVelocity, 0.05f);
@@ -153,11 +163,12 @@ public class PlayerController : MonoBehaviour
 
     private void InitiateJump()
     {
-        if (state == MotionState.GROUNDED || subAirTime < COYOTE_TIME || jumps > 0)
+        if (state == MotionState.GROUNDED || totalAirTime < COYOTE_TIME || jumps > 0)
         {
             isJumping = true;
             jumpTimeCounter = jumpTime;
-            rb.velocity = Vector2.up * jumpVelocity;
+            //rb.velocity = Vector2.up * jumpVelocity;
+            TallyAirTime();
             jumps--;
             Debug.Log("Jumped! Jumps left: " + jumps);
         }
@@ -183,17 +194,17 @@ public class PlayerController : MonoBehaviour
         // Set some parameters immediately.
         isJumping = false;
         isDashing = true;
-        rb.gravityScale = 0f;
+        allowPlayerInfluence = false;
 
         // Save the direction the player is holding input on when the dash initiates.
-        Vector2 dir = new Vector2(playerInfluence.x, playerInfluence.y);
+        dashDir = new Vector2(playerInfluence.x, playerInfluence.y);
 
         // If we do not have any direction inputted for our dash, default to dashing forward.
-        if (dir == Vector2.zero)
+        if (dashDir == Vector2.zero)
         {
-            dir = Vector2.right * (facingRight ? 1f : -1f);
+            dashDir = Vector2.right * (facingRight ? 1f : -1f);
         }
-        StartCoroutine(DashCoroutine(dir));
+        StartCoroutine(DashCoroutine(dashDir));
     }
 
     /*
@@ -204,7 +215,6 @@ public class PlayerController : MonoBehaviour
     {
         currentDashTime = dashTime;
         while(currentDashTime > 0) {
-            rb.AddForce(dir * dashSpeed);
             currentDashTime -= Time.deltaTime;
             yield return 0;
         }
@@ -217,23 +227,53 @@ public class PlayerController : MonoBehaviour
     private void EndDash()
     {
         isDashing = false;
-        rb.gravityScale = BASE_GRAVITY;
+        allowPlayerInfluence = true;
+        TallyAirTime();
     }
 
     private float CompoundXVelocities()
     {
-        float total = (playerInfluence.x * runSpeed);
+        // Baseline set total to player influence run speed.
+        float total = (playerInfluence.x * runSpeed) * (allowPlayerInfluence ? 1f : 0f);
         if (state == MotionState.GROUNDED)
         {
             total *= crouching ? CROUCH_SPEED_MULT : 1f;
+        }
+        if (isDashing)
+        {
+            total = dashDir.x * dashSpeed;
+        }
+        return total;
+    }
+
+    private float CompoundYVelocities()
+    {
+        float total = subAirTime * -gravityCoeff;
+        if (isJumping)
+            total += jumpVelocity;
+        if (isDashing)
+        {
+            total = dashDir.y * dashSpeed;
         }
         return total;
     }
 
     private void HitCeiling()
     {
-        rb.velocity = new Vector2(rb.velocity.x, jumpVelocity/4f);
+        //rb.velocity = new Vector2(rb.velocity.x, jumpVelocity/4f);
+        TallyAirTime();
+    }
 
+    private void TallyAirTime()
+    {
+        totalAirTime += subAirTime;
+        subAirTime = 0;
+    }
+
+    private void ResetAirTime()
+    {
+        totalAirTime = 0f;
+        subAirTime = 0f;
     }
 
     private void OnEnable()

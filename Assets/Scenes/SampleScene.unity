@@ -157,7 +157,7 @@ Rigidbody2D:
   m_Mass: 1
   m_LinearDrag: 0
   m_AngularDrag: 0
-  m_GravityScale: 5
+  m_GravityScale: 0
   m_Material: {fileID: 6200000, guid: ade7b05fcd484ad458274194dd12d943, type: 2}
   m_Interpolate: 0
   m_SleepingMode: 1
@@ -260,20 +260,28 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   state: 0
-  cam: {fileID: 0}
-  runSpeed: 500
-  jumpVelocity: 15
-  jumpTime: 0.5
-  jumpTimeCounter: 0
-  playerInfluence: {x: 0, y: 0}
-  subAirTime: 0
-  totalAirTime: 0
-  maxJumps: 2
-  jumps: 1
+  currentVelocity: {x: 0, y: 0}
   crouching: 0
   facingRight: 1
   isJumping: 0
-  currentVelocity: {x: 0, y: 0}
+  isDashing: 0
+  allowPlayerInfluence: 1
+  jumps: 1
+  dashes: 0
+  runSpeed: 10
+  jumpVelocity: 15
+  dashSpeed: 30
+  maxJumps: 2
+  maxDashes: 1
+  jumpTime: 0.5
+  gravityCoeff: 15
+  subAirTime: 0
+  totalAirTime: 0
+  dashTime: 0.25
+  currentDashTime: 0
+  jumpTimeCounter: 0
+  playerInfluence: {x: 0, y: 0}
+  dashDir: {x: 0, y: 0}
 --- !u!61 &337235395
 BoxCollider2D:
   m_ObjectHideFlags: 0

@@ -20,19 +20,21 @@ public class PlayerController : MonoBehaviour
     private CircleCollider2D mainCollider;
     private BoxCollider2D headCollider;
 
+    private LayerMask terrainLayer;
+
     private const float COYOTE_TIME = 5f / 60f;
     private const float CROUCH_SPEED_MULT = 0.5f;
 
     [Header("Runtime Statistics")]
     [SerializeField] private MotionState state;
     [SerializeField] private Vector2 currentVelocity = Vector2.zero;
+    [SerializeField] private int jumps;
+    [SerializeField] private int dashes;
     [SerializeField] private bool crouching = false;
     [SerializeField] private bool facingRight = true;
     [SerializeField] private bool isJumping = false;
     [SerializeField] private bool isDashing = false;
     [SerializeField] private bool allowPlayerInfluence = true;
-    [SerializeField] private int jumps;
-    [SerializeField] private int dashes;
 
     [Header("Parameters")]
     [SerializeField] private float runSpeed;
@@ -41,7 +43,9 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private int maxJumps;
     [SerializeField] private int maxDashes;
     [SerializeField] private float jumpTime;
+    [SerializeField] private bool canAirDash = false;
     [SerializeField] private float gravityCoeff;
+    [SerializeField] private float maxDescentSpeed;
 
     [Header("Runtime Trackers")]
     [SerializeField] private float subAirTime = 0;
@@ -55,6 +59,7 @@ public class PlayerController : MonoBehaviour
     private void Awake()
     {
         playerControls = new PlayerControl();
+        terrainLayer = LayerMask.GetMask("Terrain");
 
         playerControls.Player.Jump.started += ctx =>
         {
@@ -91,20 +96,14 @@ public class PlayerController : MonoBehaviour
 
 
         // Raycast up and down to check for floors.
-        RaycastHit2D floorCheck = Physics2D.CircleCast((Vector2)transform.position + mainCollider.offset, 0.49f, Vector2.down, 0.05f, LayerMask.GetMask("Terrain"));
-        RaycastHit2D ceilingCheck = Physics2D.CircleCast((Vector2)transform.position + headCollider.offset, 0.49f, Vector2.up, 0.05f, LayerMask.GetMask("Terrain"));
+        RaycastHit2D floorCheck = Physics2D.CircleCast((Vector2)transform.position + mainCollider.offset, 0.49f, Vector2.down, 0.05f, terrainLayer);
+        RaycastHit2D ceilingCheck = Physics2D.CircleCast((Vector2)transform.position + headCollider.offset, 0.49f, Vector2.up, 0.05f, terrainLayer);
 
         // If there is ground below us.
         if (floorCheck.collider != null)
         {
             // If we just hit the ground coming out from another state, reset jumps and air statistics.
-            if (state != MotionState.GROUNDED)
-            {
-                state = MotionState.GROUNDED;
-                jumps = maxJumps;
-                jumpTimeCounter = jumpTime;
-                subAirTime = 0;
-            }
+            if (state != MotionState.GROUNDED) OnLanding();
         }
         // If we don't detect any ground below us, go ahead and fall off.
         else
@@ -137,11 +136,13 @@ public class PlayerController : MonoBehaviour
             }
         }
 
+        WhileInAir();
+
         // Jump if we are on the ground, or if within COYOTE_TIME frames.
 
 
-        // Holding down to CROUCH.
-        crouching = playerInfluence.y < 0 ? true : false;
+        // Holding down to CROUCH while on the ground.
+        if (state == MotionState.GROUNDED) crouching = playerInfluence.y < 0 ? true : false;
         if (playerInfluence.x > 0) facingRight = true;
         if (playerInfluence.x < 0) facingRight = false;
     }
@@ -149,8 +150,8 @@ public class PlayerController : MonoBehaviour
     private void FixedUpdate()
     {
         Vector2 finalVelocity = new Vector2(
-            CompoundXVelocities() * Time.deltaTime,
-            CompoundYVelocities() * Time.deltaTime
+            CompoundXVelocities(),
+            CompoundYVelocities()
            // isJumping ? jumpVelocity : 0f
            // ((subAirTime * -0.918f) + (yInfluence * jumpVelocity)) * Time.deltaTime
            //rb.velocity.y
@@ -161,19 +162,49 @@ public class PlayerController : MonoBehaviour
         rb.velocity = finalVelocity;
     }
 
+    /*
+     * Logic for any effects that must occur while in the air.
+     */
+    private void WhileInAir()
+    {
+        crouching = false;
+    }
+
+    /*
+     * When the player lands on the ground, reset stats and set the state appropriately.
+     */
+    private void OnLanding()
+    {
+        state = MotionState.GROUNDED;
+        jumps = maxJumps;
+        dashes = maxDashes;
+        jumpTimeCounter = jumpTime;
+        ResetAirTime();
+    }
+
+    /*
+     * [Ion Propulsion Jump]
+     * Upon jump, set some parameters and tally the air time every jump.
+     * This works on the initial off-the-ground jump, and mid-air jumps.
+     */
     private void InitiateJump()
     {
         if (state == MotionState.GROUNDED || totalAirTime < COYOTE_TIME || jumps > 0)
         {
             isJumping = true;
             jumpTimeCounter = jumpTime;
-            //rb.velocity = Vector2.up * jumpVelocity;
+            crouching = false;
+            if (!canAirDash)
+                dashes = 0;
             TallyAirTime();
             jumps--;
-            Debug.Log("Jumped! Jumps left: " + jumps);
         }
     }
 
+    /*
+     * Logic for when the jump button is released.
+     * By setting isJumping to false and calling HitCeiling(), the player gets complete height control when releasing mid jump.
+     */
     private void ReleasedJump()
     {
         if (isJumping)
@@ -184,12 +215,14 @@ public class PlayerController : MonoBehaviour
     }
 
     /*
-     * Gravity suspension dash:
+     * [Gravity Suspension Dash]
      * Cancels all jumps and momentum, and then propels the player in the appointed direction.
+     * With conventional WASD-like input, the dash is 8-directional, but does support any direction.
      */
     private void InitiateDash()
     {
         if (isDashing) return;
+        if (!canAirDash && state == MotionState.AIR) return;
 
         // Set some parameters immediately.
         isJumping = false;
@@ -202,19 +235,42 @@ public class PlayerController : MonoBehaviour
         // If we do not have any direction inputted for our dash, default to dashing forward.
         if (dashDir == Vector2.zero)
         {
-            dashDir = Vector2.right * (facingRight ? 1f : -1f);
+            dashDir = GetForwardVector();
         }
-        StartCoroutine(DashCoroutine(dashDir));
+
+        // If we are on the ground and we press dash, perform a ground dash instead.
+        if (playerInfluence.y < 0 && state == MotionState.GROUNDED)
+        {
+            Debug.Log("Crouch slide!");
+            CrouchSlide();
+            return;
+        }
+        StartCoroutine(DashTimerCoroutine());
+    }
+
+    /*
+     * [Grounded Slide Dash]
+     * Alternate dash sequence that only functions when the player is on the ground.
+     * It only occurs on the ground while crouching, and grants a damaging hitbox.
+     */
+    private void CrouchSlide()
+    {
+        // Extra logic for altered hitboxes, animations, and stats.
+        StartCoroutine(DashTimerCoroutine());
     }
 
     /*
      * Moves the player in the direction provided, with magnitude = dashSpeed.
      * NOTE: |dir| = 1, if x and y are non-zero, they will be ~0.71 (sine/cosine at 45 degree notches).
      */
-    private IEnumerator DashCoroutine(Vector2 dir)
+    private IEnumerator DashTimerCoroutine()
     {
         currentDashTime = dashTime;
         while(currentDashTime > 0) {
+            //if (rb.IsTouchingLayers(terrainLayer) && state == MotionState.GROUNDED)
+            //{
+            //    EndDash();
+            //}
             currentDashTime -= Time.deltaTime;
             yield return 0;
         }
@@ -228,33 +284,65 @@ public class PlayerController : MonoBehaviour
     {
         isDashing = false;
         allowPlayerInfluence = true;
+        currentDashTime = 0f;
         TallyAirTime();
     }
 
+    /*
+     * The next two functions are axis velocity compound methods.
+     * They total the amount of velocity the player will have on the X and Y axis.
+     * There are three sections: Overrides, Compounds, and Multipliers.
+     * The Overrides section goes first, as an optimization for logic.
+     *  As the name implies, it is any total override of velocity on that axis.
+     * The Compounds section goes second, and adds up sources of velocity.
+     *  It must go after Overrides and before Multipliers, for mathematical purposes.
+     * The Multipliers section goes third, and is a final multiplier on any velocity.
+     */
     private float CompoundXVelocities()
     {
         // Baseline set total to player influence run speed.
-        float total = (playerInfluence.x * runSpeed) * (allowPlayerInfluence ? 1f : 0f);
+        float total = 0f;
+
+        // Overrides
+        if (isDashing)
+        {
+            return dashDir.x * dashSpeed;
+        }
+        else if (isDashing && crouching)
+        {
+            return GetForwardVector().x * dashSpeed * 1.1f;
+        }
+
+        // Compounds
+        total += (playerInfluence.x * runSpeed) * (allowPlayerInfluence ? 1f : 0f);
+
+        // Multipliers
         if (state == MotionState.GROUNDED)
         {
             total *= crouching ? CROUCH_SPEED_MULT : 1f;
         }
-        if (isDashing)
-        {
-            total = dashDir.x * dashSpeed;
-        }
+
         return total;
     }
 
     private float CompoundYVelocities()
     {
-        float total = subAirTime * -gravityCoeff;
-        if (isJumping)
-            total += jumpVelocity;
+        float total = 0f;
+
+        // Overrides
         if (isDashing)
         {
-            total = dashDir.y * dashSpeed;
+            return dashDir.y * dashSpeed;
         }
+
+        // Compounds 
+        float totalGrav = subAirTime * gravityCoeff;
+        total -= totalGrav > maxDescentSpeed ? maxDescentSpeed : totalGrav;
+
+        // Multipliers
+        if (isJumping)
+            total += jumpVelocity;
+
         return total;
     }
 
@@ -274,6 +362,15 @@ public class PlayerController : MonoBehaviour
     {
         totalAirTime = 0f;
         subAirTime = 0f;
+    }
+
+    /*
+     * Returns the forward vector of the character based on the facingRight boolean.
+     * Extrapolated since it is used in multiple places.
+     */
+    private Vector2 GetForwardVector()
+    {
+        return Vector2.right * (facingRight ? 1f : -1f);
     }
 
     private void OnEnable()

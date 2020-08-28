@@ -105,12 +105,11 @@ public class PlayerController : MonoBehaviour
         headCollider = GetComponent<BoxCollider2D>();
         jumps = maxJumps;
         dashAction = gameObject.AddComponent<ActionTimer>();
-        dashAction.SetTimes(dashTime, dashCooldown);
-        dashAction.SetFunctions(null, EndDash);
+        dashAction.Init(null, EndDash, dashTime, dashCooldown, 0f);
         meleeAction = gameObject.AddComponent<ActionTimer>();
-        meleeAction.SetTimes(meleeAttackTime, meleeAttackCooldown);
+        meleeAction.Init(null, null, meleeAttackTime, meleeAttackCooldown, 0f);
         gunAction = gameObject.AddComponent<ActionTimer>();
-        gunAction.SetTimes(gunAttackTime, gunAttackCooldown);
+        gunAction.Init(null, null, gunAttackTime, gunAttackCooldown, 0f);
     }
 
     // Update is called once per frame
@@ -293,6 +292,7 @@ public class PlayerController : MonoBehaviour
 
     private void InitiateMAttack()
     {
+        meleeAction.StartAction();
     }
 
     private void EndMAttack()
@@ -306,7 +306,7 @@ public class PlayerController : MonoBehaviour
 
     private void InitiateRAttack()
     {
-
+        gunAction.StartAction();
     }
 
     private void EndRAttack()

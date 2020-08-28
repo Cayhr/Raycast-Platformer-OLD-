@@ -16,37 +16,63 @@ public class ActionTimer : MonoBehaviour
     [Header("Status")]
     [SerializeField] private bool ready = true;
     [SerializeField] private bool inAction = false;
+
     [Header("Runtime Trackers")]
-    [SerializeField] private float currentTime, currentCooldown;
-    [SerializeField] private float maxTime, maxCooldown;
+    [SerializeField] private float currentTime;
+    [SerializeField] private float currentCooldown;
+    [SerializeField] private float delay;
+    [SerializeField] private float maxTime;
+    [SerializeField] private float maxCooldown;
+
     private Coroutine actionCR;
     private Coroutine cdCR;
 
     private StartOfAction startFn;
     private EndOfAction endFn;
 
-    public ActionTimer(StartOfAction _startFn, EndOfAction _endFn, float _maxTime, float _maxCooldown)
-    {
-        maxTime = _maxTime;
-        maxCooldown = _maxCooldown;
-        currentTime = currentCooldown = 0f;
-        startFn = _startFn;
-        endFn = _endFn;
-    }
-
     public bool IsReady() => ready;
     public bool IsActive() => inAction;
     public float ActiveTime() => currentTime;
     public float CooldownTime () => currentCooldown;
 
-    private void Start()
+    // Baseline initializtion.
+    private void Awake()
+    {
+        ready = false;
+        inAction = false;
+        startFn = null;
+        endFn = null;
+        currentTime = currentCooldown = delay = maxTime = maxCooldown = 0f;
+    }
+
+    /*
+     * Disallow anything to be done until initialized.
+     */
+    public void Init(StartOfAction _startFn, EndOfAction _endFn, float newTime, float newCooldown, float delay)
     {
         ready = true;
-        inAction = false;
+        SetFunctions(_startFn, _endFn);
+        SetTimes(newTime, newCooldown);
+        SetDelay(delay);
+    }
+
+    public void SetDelay(float d)
+    {
+        if (!ready)
+        {
+            Debug.LogWarning("Setting delay for " + this + " when Timer is not ready, or unitialized");
+            return;
+        }
+        delay = d;
     }
 
     public void SetTimes(float newTime, float newCooldown)
     {
+        if (!ready)
+        {
+            Debug.LogWarning("Changing times for " + this + " when Timer is not ready, or unitialized");
+            return;
+        }
         currentTime = currentCooldown = 0f;
         maxTime = newTime;
         maxCooldown = newCooldown;
@@ -54,6 +80,11 @@ public class ActionTimer : MonoBehaviour
 
     public void SetFunctions(StartOfAction _startFn, EndOfAction _endFn)
     {
+        if (!ready)
+        {
+            Debug.LogWarning("Changing functions for " + this + " when Timer is not ready, or unitialized");
+            return;
+        }
         startFn = _startFn;
         endFn = _endFn;
     }
@@ -73,7 +104,7 @@ public class ActionTimer : MonoBehaviour
 
     private IEnumerator InAction()
     {
-        currentTime = maxTime;
+        currentTime = maxTime + delay;
         while (currentTime > 0f)
         {
             currentTime -= Time.deltaTime;
@@ -86,7 +117,6 @@ public class ActionTimer : MonoBehaviour
     {
         inAction = false;
         currentTime = 0f;
-        currentCooldown = maxCooldown;
 
         // Play whatever function was desired 
         endFn?.Invoke();

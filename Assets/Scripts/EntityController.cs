@@ -3,12 +3,16 @@ using System.Collections.Generic;
 using UnityEngine;
 
 public delegate Vector2 VelocityCompoundMethod();
+public delegate void StateChangeAction();
 
 public class EntityController : MonoBehaviour
 {
     public enum MotionState { GROUNDED, AIR, CLUTCH };
     private Rigidbody2D rb;
+    public CircleCollider2D mainCollider;
+    public BoxCollider2D headCollider;
     private VelocityCompoundMethod vOverride, vAdd, vMult;
+    private StateChangeAction eOnLanding;
 
     [Header("Runtime Statistics")]
     public MotionState state;
@@ -29,10 +33,9 @@ public class EntityController : MonoBehaviour
 
     private void Start()
     {
-        // By default, gravity vector will face (0, -1);
-        gravityDir = Vector2.down;
-        gravityOn = true;
         rb = GetComponent<Rigidbody2D>();
+        mainCollider = GetComponent<CircleCollider2D>();
+        headCollider = GetComponent<BoxCollider2D>();
         if (rb == null)
         {
             Debug.LogError("Missing Rigidbody2D for " + gameObject);
@@ -50,8 +53,33 @@ public class EntityController : MonoBehaviour
         vMult = mult;
     }
 
+    public void SetEventFunctions(StateChangeAction landing)
+    {
+        eOnLanding = landing;
+    }
+
     public void Update()
     {
+        // Raycast up and down to check for floors.
+        RaycastHit2D floorCheck = Physics2D.CircleCast((Vector2)transform.position + mainCollider.offset, mainCollider.radius, Vector2.down, 0.05f, LayerInfo.terrainLayer);
+        //RaycastHit2D ceilingCheck = Physics2D.CircleCast((Vector2)transform.position + headCollider.offset, 0.49f, Vector2.up, 0.05f, terrainLayer);
+
+        // If there is ground below us.
+        if (floorCheck.collider != null)
+        {
+            // If we just hit the ground coming out from another state, reset jumps and air statistics.
+            if (state != MotionState.GROUNDED) OnLanding();
+        }
+        // If we don't detect any ground below us, go ahead and fall off.
+        else
+        {
+            // TODO: One-time "we left the ground" check.
+            // The first frame we leave coyote time, subtract a jump.
+            state = MotionState.AIR;
+            subAirTime += Time.deltaTime;
+
+            //WhileInAir();
+        }
         if (directionalInfluence.x > 0) facingRight = true;
         if (directionalInfluence.x < 0) facingRight = false;
     }
@@ -85,6 +113,13 @@ public class EntityController : MonoBehaviour
         float gravSpeed = (en.subAirTime * en.gravityCoeff);
         bool uncapped = en.maxGravitySpeed < 0 ? true : false;
         return dir * (uncapped ? gravSpeed : (gravSpeed > en.maxGravitySpeed ? en.maxGravitySpeed : gravSpeed));
+    }
+
+    private void OnLanding()
+    {
+        state = MotionState.GROUNDED;
+        eOnLanding?.Invoke();
+        ResetAirTime();
     }
 
     public void TallyAirTime()

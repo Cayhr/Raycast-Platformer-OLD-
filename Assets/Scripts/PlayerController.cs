@@ -15,11 +15,7 @@ public class PlayerController : MonoBehaviour
     public UnityEvent e_Land;
 
     private PlayerControl playerControls;
-    private CircleCollider2D mainCollider;
-    private BoxCollider2D headCollider;
     private ActionTimer dashAction, meleeAction, gunAction;
-
-    private LayerMask terrainLayer;
 
     private const float COYOTE_TIME = 5f / 60f;
     private const float CROUCH_SPEED_MULT = 0.5f;
@@ -57,7 +53,6 @@ public class PlayerController : MonoBehaviour
     private void Awake()
     {
         playerControls = new PlayerControl();
-        terrainLayer = LayerMask.GetMask("Terrain");
 
         playerControls.Player.Jump.started += ctx =>
         {
@@ -93,9 +88,8 @@ public class PlayerController : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        mainCollider = GetComponent<CircleCollider2D>();
-        headCollider = GetComponent<BoxCollider2D>();
         _EC.SetVelocityFunctions(OverrideVelocities, CompoundVelocities, MultiplyVelocities);
+        _EC.SetEventFunctions(OnLanding);
         jumps = maxJumps;
         dashAction = gameObject.AddComponent<ActionTimer>();
         dashAction.Init(null, EndDash, dashTime, dashCooldown, 0f);
@@ -111,29 +105,12 @@ public class PlayerController : MonoBehaviour
     {
         _EC.directionalInfluence = playerControls.Player.Move.ReadValue<Vector2>();
 
-        // Raycast up and down to check for floors.
-        RaycastHit2D floorCheck = Physics2D.CircleCast((Vector2)transform.position + mainCollider.offset, 0.49f, Vector2.down, 0.05f, terrainLayer);
-        //RaycastHit2D ceilingCheck = Physics2D.CircleCast((Vector2)transform.position + headCollider.offset, 0.49f, Vector2.up, 0.05f, terrainLayer);
-
-        // If there is ground below us.
-        if (floorCheck.collider != null)
+        if (_EC.state == EntityController.MotionState.AIR)
         {
-            // If we just hit the ground coming out from another state, reset jumps and air statistics.
-            if (_EC.state != EntityController.MotionState.GROUNDED) OnLanding();
-        }
-        // If we don't detect any ground below us, go ahead and fall off.
-        else
-        {
-            // TODO: One-time "we left the ground" check.
-            // The first frame we leave coyote time, subtract a jump.
             if (_EC.subAirTime == COYOTE_TIME && !isJumping)
             {
                 jumps--;
             }
-            _EC.state = EntityController.MotionState.AIR;
-            _EC.subAirTime += Time.deltaTime;
-
-            WhileInAir();
         }
 
         // While holding jump, keep going until the max jump is achieved, and then drop afterwards.
@@ -155,11 +132,11 @@ public class PlayerController : MonoBehaviour
         if (_EC.state == EntityController.MotionState.GROUNDED && !dashAction.IsActive()) crouching = _EC.directionalInfluence.y < 0 ? true : false;
         if (crouching)
         {
-            headCollider.enabled = false;
+            _EC.headCollider.enabled = false;
         }
         else
         {
-            headCollider.enabled = true;
+            _EC.headCollider.enabled = true;
         }
     }
 
@@ -185,14 +162,9 @@ public class PlayerController : MonoBehaviour
         crouching = false;
     }
 
-    /*
-     * When the player lands on the ground, reset stats and set the state appropriately.
-     */
     private void OnLanding()
     {
-        _EC.state = EntityController.MotionState.GROUNDED;
         RestoreMovementOptions();
-        _EC.ResetAirTime();
     }
 
     /*

@@ -21,6 +21,9 @@ public class PlayerController : MonoBehaviour
     private BoxCollider2D headCollider;
     private ActionTimer dashAction, meleeAction, gunAction;
 
+    [Header("References")]
+    [SerializeField] private GameObject swingHitbox;
+
     private LayerMask terrainLayer;
 
     private const float COYOTE_TIME = 5f / 60f;
@@ -107,9 +110,10 @@ public class PlayerController : MonoBehaviour
         dashAction = gameObject.AddComponent<ActionTimer>();
         dashAction.Init(null, EndDash, dashTime, dashCooldown, 0f);
         meleeAction = gameObject.AddComponent<ActionTimer>();
-        meleeAction.Init(null, null, meleeAttackTime, meleeAttackCooldown, 0f);
+        meleeAction.Init(null, EndMAttack, meleeAttackTime, meleeAttackCooldown, 0f);
         gunAction = gameObject.AddComponent<ActionTimer>();
-        gunAction.Init(null, null, gunAttackTime, gunAttackCooldown, 0f);
+        gunAction.Init(null, EndRAttack, gunAttackTime, gunAttackCooldown, 0f);
+        swingHitbox.SetActive(false);
     }
 
     // Update is called once per frame
@@ -289,15 +293,27 @@ public class PlayerController : MonoBehaviour
      MELEE ATTACK LOGIC
      ================================================================================*/
 
-
     private void InitiateMAttack()
     {
+        if (!meleeAction.IsReady()) return;
+        if (meleeAction.IsActive()) return;
+
+        // Figure out the direction the swing should face.
+        Vector2 dir = GetForwardVector();
+        if (directionalInfluence != Vector2.zero)
+        {
+            dir.x = directionalInfluence.x;
+            dir.y = directionalInfluence.y;
+            if (state == MotionState.GROUNDED && directionalInfluence.y < 0) dir.y = 0f;
+        }
+        swingHitbox.transform.rotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg);
+        swingHitbox.SetActive(true);
         meleeAction.StartAction();
     }
 
     private void EndMAttack()
     {
-
+        swingHitbox.SetActive(false);
     }
 
     /*================================================================================
@@ -306,6 +322,8 @@ public class PlayerController : MonoBehaviour
 
     private void InitiateRAttack()
     {
+        if (!gunAction.IsReady()) return;
+        if (gunAction.IsActive()) return;
         gunAction.StartAction();
     }
 

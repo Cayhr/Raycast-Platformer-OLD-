@@ -16,7 +16,7 @@ TagManager:
   - Entities
   - Terrain
   - Effectors
-  - Projectiles
+  - Hitboxes
   - Interactables
   - VisualEFfects
   - 

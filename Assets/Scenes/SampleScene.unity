@@ -269,11 +269,12 @@ GameObject:
   m_Component:
   - component: {fileID: 337235393}
   - component: {fileID: 337235391}
+  - component: {fileID: 337235392}
   - component: {fileID: 337235394}
   - component: {fileID: 337235389}
   - component: {fileID: 337235395}
   - component: {fileID: 337235390}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Player
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -367,6 +368,29 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
+--- !u!114 &337235392
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 337235388}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: afb13b02a460a7143a28b6ea2793e73b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  state: 0
+  currentVelocity: {x: 0, y: 0}
+  externalVelocity: {x: 0, y: 0}
+  facingRight: 1
+  gravityDir: {x: 0, y: 0}
+  gravityOn: 0
+  gravityCoeff: 0
+  maxGravitySpeed: 0
+  subAirTime: 0
+  totalAirTime: 0
+  directionalInfluence: {x: 0, y: 0}
 --- !u!4 &337235393
 Transform:
   m_ObjectHideFlags: 0
@@ -400,12 +424,9 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   swingHitbox: {fileID: 1373288501}
-  state: 0
-  currentVelocity: {x: 0, y: 0}
-  externalVelocity: {x: 0, y: 0}
+  _EC: {fileID: 337235392}
   jumps: 0
   crouching: 0
-  facingRight: 1
   isJumping: 0
   canDash: 1
   allowPlayerInfluence: 1
@@ -421,12 +442,7 @@ MonoBehaviour:
   gunAttackCooldown: 0.1
   jumpTime: 0.5
   canAirDash: 1
-  gravityCoeff: 30
-  maxDescentSpeed: 30
-  subAirTime: 0
-  totalAirTime: 0
   jumpTimeCounter: 0
-  directionalInfluence: {x: 0, y: 0}
   dashDir: {x: 0, y: 0}
 --- !u!61 &337235395
 BoxCollider2D:
@@ -1453,6 +1469,87 @@ MonoBehaviour:
   - {x: 0.5, y: -0.5, z: 0}
   - {x: 0.5, y: 0.5, z: 0}
   - {x: -0.5, y: 0.5, z: 0}
+--- !u!1 &770913021
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 770913023}
+  - component: {fileID: 770913022}
+  m_Layer: 0
+  m_Name: New Sprite
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!212 &770913022
+SpriteRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 770913021}
+  m_Enabled: 1
+  m_CastShadows: 0
+  m_ReceiveShadows: 0
+  m_DynamicOccludee: 1
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: a97c105638bdf8b4a8650670310a4cd3, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 0
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_Sprite: {fileID: 21300000, guid: b2472de0f9719d241af5d4b19f2a52c3, type: 3}
+  m_Color: {r: 1, g: 0.037613455, b: 0, a: 1}
+  m_FlipX: 0
+  m_FlipY: 0
+  m_DrawMode: 0
+  m_Size: {x: 1.2, y: 1.2}
+  m_AdaptiveModeThreshold: 0.5
+  m_SpriteTileMode: 0
+  m_WasSpriteAssigned: 1
+  m_MaskInteraction: 0
+  m_SpriteSortPoint: 0
+--- !u!4 &770913023
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 770913021}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0.9, y: -8.24, z: -1.2773438}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 13
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1299021005
 GameObject:
   m_ObjectHideFlags: 0
@@ -1733,7 +1830,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1373288502
 Transform:
   m_ObjectHideFlags: 0

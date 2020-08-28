@@ -14,28 +14,23 @@ public class PlayerController : MonoBehaviour
 {
     public UnityEvent e_Land;
 
-    private enum MotionState { GROUNDED, AIR, CLUTCH };
-    private Rigidbody2D rb;
     private PlayerControl playerControls;
     private CircleCollider2D mainCollider;
     private BoxCollider2D headCollider;
     private ActionTimer dashAction, meleeAction, gunAction;
-
-    [Header("References")]
-    [SerializeField] private GameObject swingHitbox;
 
     private LayerMask terrainLayer;
 
     private const float COYOTE_TIME = 5f / 60f;
     private const float CROUCH_SPEED_MULT = 0.5f;
 
+    [Header("References")]
+    [SerializeField] private GameObject swingHitbox;
+    [SerializeField] private EntityController _EC;
+
     [Header("Runtime Statistics")]
-    [SerializeField] private MotionState state;
-    [SerializeField] private Vector2 currentVelocity = Vector2.zero;
-    [SerializeField] private Vector2 externalVelocity = Vector2.zero;
     [SerializeField] private int jumps;
     [SerializeField] private bool crouching = false;
-    [SerializeField] private bool facingRight = true;
     [SerializeField] private bool isJumping = false;
     //[SerializeField] private bool isDashing = false;
     [SerializeField] private bool canDash = true;
@@ -54,14 +49,9 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float gunAttackCooldown;
     [SerializeField] private float jumpTime;
     [SerializeField] private bool canAirDash = false;
-    [SerializeField] private float gravityCoeff;
-    [SerializeField] private float maxDescentSpeed;
 
     [Header("Runtime Trackers")]
-    [SerializeField] private float subAirTime = 0;
-    [SerializeField] private float totalAirTime = 0;
     [SerializeField] private float jumpTimeCounter;
-    [SerializeField] private Vector2 directionalInfluence = Vector2.zero;
     [SerializeField] private Vector2 dashDir = Vector2.zero;
 
     private void Awake()
@@ -103,9 +93,9 @@ public class PlayerController : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        rb = GetComponent<Rigidbody2D>();
         mainCollider = GetComponent<CircleCollider2D>();
         headCollider = GetComponent<BoxCollider2D>();
+        _EC.SetVelocityFunctions(OverrideVelocities, CompoundVelocities, MultiplyVelocities);
         jumps = maxJumps;
         dashAction = gameObject.AddComponent<ActionTimer>();
         dashAction.Init(null, EndDash, dashTime, dashCooldown, 0f);
@@ -119,7 +109,7 @@ public class PlayerController : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        directionalInfluence = playerControls.Player.Move.ReadValue<Vector2>();
+        _EC.directionalInfluence = playerControls.Player.Move.ReadValue<Vector2>();
 
         // Raycast up and down to check for floors.
         RaycastHit2D floorCheck = Physics2D.CircleCast((Vector2)transform.position + mainCollider.offset, 0.49f, Vector2.down, 0.05f, terrainLayer);
@@ -129,19 +119,19 @@ public class PlayerController : MonoBehaviour
         if (floorCheck.collider != null)
         {
             // If we just hit the ground coming out from another state, reset jumps and air statistics.
-            if (state != MotionState.GROUNDED) OnLanding();
+            if (_EC.state != EntityController.MotionState.GROUNDED) OnLanding();
         }
         // If we don't detect any ground below us, go ahead and fall off.
         else
         {
             // TODO: One-time "we left the ground" check.
             // The first frame we leave coyote time, subtract a jump.
-            if (subAirTime == COYOTE_TIME && !isJumping)
+            if (_EC.subAirTime == COYOTE_TIME && !isJumping)
             {
                 jumps--;
             }
-            state = MotionState.AIR;
-            subAirTime += Time.deltaTime;
+            _EC.state = EntityController.MotionState.AIR;
+            _EC.subAirTime += Time.deltaTime;
 
             WhileInAir();
         }
@@ -151,18 +141,18 @@ public class PlayerController : MonoBehaviour
         {
             if (jumpTimeCounter > 0)
             {
-                rb.velocity = Vector2.up * jumpVelocity;
+                //rb.velocity = Vector2.up * jumpVelocity;
                 jumpTimeCounter -= Time.deltaTime;
             }
             else
             {
                 isJumping = false;
-                TallyAirTime();
+                _EC.TallyAirTime();
             }
         }
 
         // Holding down to CROUCH while on the ground and you are not dashing into the ground.
-        if (state == MotionState.GROUNDED && !dashAction.IsActive()) crouching = directionalInfluence.y < 0 ? true : false;
+        if (_EC.state == EntityController.MotionState.GROUNDED && !dashAction.IsActive()) crouching = _EC.directionalInfluence.y < 0 ? true : false;
         if (crouching)
         {
             headCollider.enabled = false;
@@ -171,21 +161,18 @@ public class PlayerController : MonoBehaviour
         {
             headCollider.enabled = true;
         }
-
-        if (directionalInfluence.x > 0) facingRight = true;
-        if (directionalInfluence.x < 0) facingRight = false;
     }
 
     /*
      * We set the velocity of the rigidbody to the final calculated velocity, but also store that information.
      */
+    /*
     private void FixedUpdate()
     {
         Vector2 finalVelocity = new Vector2(CompoundXVelocities(), CompoundYVelocities());
-        currentVelocity = finalVelocity;
-        rb.velocity = finalVelocity;
-        DecayExternalVelocity(0.1f);
+        _EC.SetVelocity(finalVelocity);
     }
+    */
 
     /*
      * Logic for any effects that must occur while in the air.
@@ -203,9 +190,9 @@ public class PlayerController : MonoBehaviour
      */
     private void OnLanding()
     {
-        state = MotionState.GROUNDED;
+        _EC.state = EntityController.MotionState.GROUNDED;
         RestoreMovementOptions();
-        ResetAirTime();
+        _EC.ResetAirTime();
     }
 
     /*
@@ -215,12 +202,12 @@ public class PlayerController : MonoBehaviour
      */
     private void InitiateJump()
     {
-        if (state == MotionState.GROUNDED || totalAirTime < COYOTE_TIME || jumps > 0)
+        if (_EC.state == EntityController.MotionState.GROUNDED || _EC.totalAirTime < COYOTE_TIME || jumps > 0)
         {
             isJumping = true;
             jumpTimeCounter = jumpTime;
             crouching = false;
-            TallyAirTime();
+            _EC.TallyAirTime();
             jumps--;
         }
     }
@@ -234,8 +221,8 @@ public class PlayerController : MonoBehaviour
         if (isJumping)
         {
             isJumping = false;
-            ApplyVelocity(Vector2.up, 2f);
-            TallyAirTime();
+            _EC.ApplyVelocity(Vector2.up, 2f);
+            _EC.TallyAirTime();
         }
     }
 
@@ -252,7 +239,7 @@ public class PlayerController : MonoBehaviour
     {
         if (!dashAction.IsReady()) return;
         if (dashAction.IsActive()) return;                       // Cannot spam dashes.
-        if (!canAirDash && state == MotionState.AIR) return;    // If not allowed to air dash while in the air.
+        if (!canAirDash && _EC.state == EntityController.MotionState.AIR) return;    // If not allowed to air dash while in the air.
 
         // Set some parameters immediately.
         isJumping = false;
@@ -260,18 +247,18 @@ public class PlayerController : MonoBehaviour
         allowPlayerInfluence = false;
 
         // Save the direction the player is holding input on when the dash initiates.
-        dashDir = new Vector2(directionalInfluence.x, directionalInfluence.y);
+        dashDir = _EC.directionalInfluence;
 
         // If we do not have any direction inputted for our dash, default to dashing forward.
         if (dashDir == Vector2.zero)
         {
-            dashDir = GetForwardVector();
+            dashDir = _EC.GetForwardVector();
         }
 
         // If we are on the ground and we press dash, perform a ground dash instead.
-        if (directionalInfluence.y < 0 && state == MotionState.GROUNDED)
+        if (_EC.directionalInfluence.y < 0 && _EC.state == EntityController.MotionState.GROUNDED)
         {
-            dashDir = GetForwardVector();
+            dashDir = _EC.GetForwardVector();
             Debug.Log("Crouch slide!");
             //CrouchSlide();
             return;
@@ -286,7 +273,7 @@ public class PlayerController : MonoBehaviour
     {
         //isDashing = false;
         allowPlayerInfluence = true;
-        TallyAirTime();
+        _EC.TallyAirTime();
     }
 
     /*================================================================================
@@ -299,12 +286,13 @@ public class PlayerController : MonoBehaviour
         if (meleeAction.IsActive()) return;
 
         // Figure out the direction the swing should face.
-        Vector2 dir = GetForwardVector();
-        if (directionalInfluence != Vector2.zero)
+        Vector2 dir = _EC.GetForwardVector();
+        Vector2 currentDI = _EC.directionalInfluence;
+        if (currentDI != Vector2.zero)
         {
-            dir.x = directionalInfluence.x;
-            dir.y = directionalInfluence.y;
-            if (state == MotionState.GROUNDED && directionalInfluence.y < 0) dir.y = 0f;
+            dir.x = currentDI.x;
+            dir.y = currentDI.y;
+            if (_EC.state == EntityController.MotionState.GROUNDED && currentDI.y < 0) dir.y = 0f;
         }
         swingHitbox.transform.rotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg);
         swingHitbox.SetActive(true);
@@ -342,6 +330,34 @@ public class PlayerController : MonoBehaviour
      *  It must go after Overrides and before Multipliers, for mathematical purposes.
      * The Multipliers section goes third, and is a final multiplier on any velocity.
      */
+    private Vector2 OverrideVelocities()
+    {
+        Vector2 final = Vector2.zero;
+        if (dashAction.IsActive())
+        {
+            if (crouching) final.x = _EC.GetForwardVector().x * dashSpeed * 1.1f;
+            else final.x = dashDir.x * dashSpeed;
+            final.y = dashDir.y * dashSpeed;
+        }
+        return final;
+    }
+
+    private Vector2 CompoundVelocities()
+    {
+        Vector2 final = Vector2.zero;
+        final.x += (_EC.directionalInfluence.x * runSpeed) * (allowPlayerInfluence ? 1f : 0f);
+        if (isJumping) final.y += jumpVelocity;
+        return final;
+    }
+
+    private Vector2 MultiplyVelocities()
+    {
+        Vector2 final = Vector2.one;
+        if (_EC.state == EntityController.MotionState.GROUNDED) final.x = crouching ? CROUCH_SPEED_MULT : 1f;
+        return final;
+    }
+
+    /*
     private float CompoundXVelocities()
     {
         // Baseline set total to player influence run speed.
@@ -350,7 +366,7 @@ public class PlayerController : MonoBehaviour
         // Overrides
         if (dashAction.IsActive() && crouching)
         {
-            return GetForwardVector().x * dashSpeed * 1.1f;
+            return _EC.GetForwardVector().x * dashSpeed * 1.1f;
         }
         else if (dashAction.IsActive())
         {
@@ -358,14 +374,9 @@ public class PlayerController : MonoBehaviour
         }
 
         // Compounds
-        total += (directionalInfluence.x * runSpeed) * (allowPlayerInfluence ? 1f : 0f);
-        total += externalVelocity.x;
+        total += _EC.externalVelocity.x;
 
         // Multipliers
-        if (state == MotionState.GROUNDED)
-        {
-            total *= crouching ? CROUCH_SPEED_MULT : 1f;
-        }
 
         return total;
     }
@@ -382,20 +393,21 @@ public class PlayerController : MonoBehaviour
 
         // Compounds 
         float totalGrav = subAirTime * gravityCoeff;
-        total -= totalGrav > maxDescentSpeed ? maxDescentSpeed : totalGrav;
-        total += externalVelocity.y;
-
-        // Multipliers
+        total -= totalGrav > maxGravitySpeed ? maxGravitySpeed : totalGrav;
+        total += _EC.externalVelocity.y;
         if (isJumping)
             total += jumpVelocity;
 
+        // Multipliers
+
         return total;
     }
+    */
 
     private void HitCeiling()
     {
         //rb.velocity = new Vector2(rb.velocity.x, jumpVelocity/4f);
-        TallyAirTime();
+        _EC.TallyAirTime();
     }
 
     public void RestoreMovementOptions()
@@ -408,46 +420,6 @@ public class PlayerController : MonoBehaviour
     {
         jumps = j;
     }
-
-    public void TallyAirTime()
-    {
-        totalAirTime += subAirTime;
-        subAirTime = 0;
-    }
-
-    private void ResetAirTime()
-    {
-        totalAirTime = 0f;
-        subAirTime = 0f;
-    }
-
-    /*
-     * Returns the forward vector of the character based on the facingRight boolean.
-     * Extrapolated since it is used in multiple places.
-     */
-    private Vector2 GetForwardVector()
-    {
-        return Vector2.right * (facingRight ? 1f : -1f);
-    }
-
-    public void ApplyVelocity(Vector2 force)
-    {
-        externalVelocity = force;
-    }
-
-    public void ApplyVelocity(Vector2 dir, float mag)
-    {
-        externalVelocity = dir * mag;
-    }
-
-    /*
-     * Smoothly 
-     */
-    private void DecayExternalVelocity(float rate)
-    {
-        externalVelocity = Vector2.Lerp(externalVelocity, Vector2.zero, rate);
-    }
-
     private void OnEnable()
     {
         playerControls.Enable();

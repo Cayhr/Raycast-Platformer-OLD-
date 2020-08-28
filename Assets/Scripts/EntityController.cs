@@ -40,6 +40,10 @@ public class EntityController : MonoBehaviour
         {
             Debug.LogError("Missing Rigidbody2D for " + gameObject);
         }
+        else
+        {
+            Physics2D.IgnoreLayerCollision(8, 8, true);
+        }
     }
 
     public bool FacingRight() => facingRight;
@@ -61,7 +65,7 @@ public class EntityController : MonoBehaviour
     public void Update()
     {
         // Raycast up and down to check for floors.
-        RaycastHit2D floorCheck = Physics2D.CircleCast((Vector2)transform.position + mainCollider.offset, mainCollider.radius, Vector2.down, 0.05f, LayerInfo.terrainLayer);
+        RaycastHit2D floorCheck = Physics2D.CircleCast((Vector2)transform.position + mainCollider.offset, mainCollider.radius, gravityDir, 0.05f, LayerInfo.TERRAIN);
         //RaycastHit2D ceilingCheck = Physics2D.CircleCast((Vector2)transform.position + headCollider.offset, 0.49f, Vector2.up, 0.05f, terrainLayer);
 
         // If there is ground below us.

@@ -248,6 +248,12 @@ public class PlayerController : MonoBehaviour
         _EC.TallyAirTime();
     }
 
+    public void InterruptDash()
+    {
+        dashAction.CancelNoEndAction();
+        EndDash();
+    }
+
     /*================================================================================
      MELEE ATTACK LOGIC
      ================================================================================*/

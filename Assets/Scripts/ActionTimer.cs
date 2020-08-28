@@ -56,6 +56,32 @@ public class ActionTimer : MonoBehaviour
         SetDelay(delay);
     }
 
+    public void CancelWithEndAction()
+    {
+        CancelNoEndAction();
+        endFn?.Invoke();
+    }
+
+    // If the ActionTimer is in progress, stop it pre-maturely.
+    public void CancelNoEndAction()
+    {
+        if (inAction && actionCR != null)
+        {
+            StopCoroutine(actionCR);
+            ResetAndCooldown();
+        }
+    }
+
+    public void ReduceCooldown(float seconds) => currentCooldown -= seconds;
+
+    public void RefreshCooldown()
+    {
+        if (cdCR != null) StopCoroutine(cdCR);
+        currentCooldown = 0f;
+        ready = true;
+        inAction = false;
+    }
+
     public void SetDelay(float d)
     {
         if (!ready)
@@ -115,11 +141,16 @@ public class ActionTimer : MonoBehaviour
 
     private void EndAction()
     {
+        // Play whatever function was desired 
+        endFn?.Invoke();
+        ResetAndCooldown();
+    }
+
+    private void ResetAndCooldown()
+    {
         inAction = false;
         currentTime = 0f;
 
-        // Play whatever function was desired 
-        endFn?.Invoke();
         if (cdCR != null)
         {
             StopCoroutine(cdCR);

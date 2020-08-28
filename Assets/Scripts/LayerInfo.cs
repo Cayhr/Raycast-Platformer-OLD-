@@ -4,5 +4,6 @@ using UnityEngine;
 
 public class LayerInfo
 {
-    public static LayerMask terrainLayer = LayerMask.GetMask("Terrain");
+    public static LayerMask TERRAIN = LayerMask.GetMask("Terrain");
+    public static LayerMask ENTITIES = LayerMask.GetMask("Entities");
 }

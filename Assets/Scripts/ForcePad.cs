@@ -34,9 +34,7 @@ public class ForcePad : MonoBehaviour
         // If we hit the player, then we can do this.
         if (player != null)
         {
-            // EndDash() also calls TallyAirTime(), so it will be properly reset.
-            // Redundant if the player is not doing a Gravity Suspension Dash.
-            player.EndDash();
+            player.InterruptDash();
             player.SetJumps(player.maxJumps - 1);
         }
 

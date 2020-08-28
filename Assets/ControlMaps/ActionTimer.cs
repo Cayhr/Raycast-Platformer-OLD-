@@ -13,10 +13,12 @@ public delegate void EndOfAction();
  */
 public class ActionTimer : MonoBehaviour
 {
-    private bool ready = true;
-    private bool inAction = false;
-    private float currentTime, currentCooldown;
-    private float maxTime, maxCooldown;
+    [Header("Status")]
+    [SerializeField] private bool ready = true;
+    [SerializeField] private bool inAction = false;
+    [Header("Runtime Trackers")]
+    [SerializeField] private float currentTime, currentCooldown;
+    [SerializeField] private float maxTime, maxCooldown;
     private Coroutine actionCR;
     private Coroutine cdCR;
 
@@ -37,10 +39,23 @@ public class ActionTimer : MonoBehaviour
     public float ActiveTime() => currentTime;
     public float CooldownTime () => currentCooldown;
 
+    private void Start()
+    {
+        ready = true;
+        inAction = false;
+    }
+
     public void SetTimes(float newTime, float newCooldown)
     {
+        currentTime = currentCooldown = 0f;
         maxTime = newTime;
         maxCooldown = newCooldown;
+    }
+
+    public void SetFunctions(StartOfAction _startFn, EndOfAction _endFn)
+    {
+        startFn = _startFn;
+        endFn = _endFn;
     }
 
     public void StartAction()
@@ -70,6 +85,8 @@ public class ActionTimer : MonoBehaviour
     private void EndAction()
     {
         inAction = false;
+        currentTime = 0f;
+        currentCooldown = maxCooldown;
 
         // Play whatever function was desired 
         endFn?.Invoke();
@@ -85,7 +102,7 @@ public class ActionTimer : MonoBehaviour
         currentCooldown = maxCooldown;
         while (currentCooldown > 0f)
         {
-            currentCooldown -= Time.deltaCooldown;
+            currentCooldown -= Time.deltaTime;
             yield return 0;
         }
         ready = true;

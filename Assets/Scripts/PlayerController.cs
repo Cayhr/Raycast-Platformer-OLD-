@@ -19,6 +19,7 @@ public class PlayerController : MonoBehaviour
     private PlayerControl playerControls;
     private CircleCollider2D mainCollider;
     private BoxCollider2D headCollider;
+    private ActionTimer dashAction, meleeAction, gunAction;
 
     private LayerMask terrainLayer;
 
@@ -33,7 +34,7 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private bool crouching = false;
     [SerializeField] private bool facingRight = true;
     [SerializeField] private bool isJumping = false;
-    [SerializeField] private bool isDashing = false;
+    //[SerializeField] private bool isDashing = false;
     [SerializeField] private bool canDash = true;
     [SerializeField] private bool allowPlayerInfluence = true;
 
@@ -44,8 +45,10 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float dashTime;                                // Time spent while dashing.
     [SerializeField] private float dashCooldown;                            // Dash cooldown in seconds after a dash.
     public int maxJumps;
+    [SerializeField] private float meleeAttackTime;
     [SerializeField] private float meleeAttackCooldown;
-    [SerializeField] private float rangedAttackCooldown;
+    [SerializeField] private float gunAttackTime;
+    [SerializeField] private float gunAttackCooldown;
     [SerializeField] private float jumpTime;
     [SerializeField] private bool canAirDash = false;
     [SerializeField] private float gravityCoeff;
@@ -54,11 +57,7 @@ public class PlayerController : MonoBehaviour
     [Header("Runtime Trackers")]
     [SerializeField] private float subAirTime = 0;
     [SerializeField] private float totalAirTime = 0;
-    [SerializeField] private float currentDashTime;                         // Counter for time in current dash action.
-    [SerializeField] private float dashCooldownCounter;                     // Counter for time between dashes.
     [SerializeField] private float jumpTimeCounter;
-    [SerializeField] private float meleeAttackCounter;
-    [SerializeField] private float rangedAttackCounter;
     [SerializeField] private Vector2 directionalInfluence = Vector2.zero;
     [SerializeField] private Vector2 dashDir = Vector2.zero;
 
@@ -105,6 +104,13 @@ public class PlayerController : MonoBehaviour
         mainCollider = GetComponent<CircleCollider2D>();
         headCollider = GetComponent<BoxCollider2D>();
         jumps = maxJumps;
+        dashAction = gameObject.AddComponent<ActionTimer>();
+        dashAction.SetTimes(dashTime, dashCooldown);
+        dashAction.SetFunctions(null, EndDash);
+        meleeAction = gameObject.AddComponent<ActionTimer>();
+        meleeAction.SetTimes(meleeAttackTime, meleeAttackCooldown);
+        gunAction = gameObject.AddComponent<ActionTimer>();
+        gunAction.SetTimes(gunAttackTime, gunAttackCooldown);
     }
 
     // Update is called once per frame
@@ -137,12 +143,6 @@ public class PlayerController : MonoBehaviour
             WhileInAir();
         }
 
-        // Regenerate the dash action.
-        if (!isDashing && dashCooldownCounter > 0)
-        {
-            dashCooldownCounter -= Time.deltaTime;
-        }
-
         // While holding jump, keep going until the max jump is achieved, and then drop afterwards.
         if (isJumping)
         {
@@ -159,7 +159,7 @@ public class PlayerController : MonoBehaviour
         }
 
         // Holding down to CROUCH while on the ground and you are not dashing into the ground.
-        if (state == MotionState.GROUNDED && !isDashing) crouching = directionalInfluence.y < 0 ? true : false;
+        if (state == MotionState.GROUNDED && !dashAction.IsActive()) crouching = directionalInfluence.y < 0 ? true : false;
         if (crouching)
         {
             headCollider.enabled = false;
@@ -247,13 +247,13 @@ public class PlayerController : MonoBehaviour
      */
     private void InitiateDash()
     {
-        if (dashCooldownCounter > 0) return;
-        if (isDashing) return;                                  // Cannot spam dashes.
+        if (!dashAction.IsReady()) return;
+        if (dashAction.IsActive()) return;                       // Cannot spam dashes.
         if (!canAirDash && state == MotionState.AIR) return;    // If not allowed to air dash while in the air.
 
         // Set some parameters immediately.
         isJumping = false;
-        isDashing = true;
+        //isDashing = true;
         allowPlayerInfluence = false;
 
         // Save the direction the player is holding input on when the dash initiates.
@@ -270,40 +270,10 @@ public class PlayerController : MonoBehaviour
         {
             dashDir = GetForwardVector();
             Debug.Log("Crouch slide!");
-            CrouchSlide();
+            //CrouchSlide();
             return;
         }
-        StartCoroutine(DashCoroutine(false));
-    }
-
-    /*
-     * [Grounded Slide Dash]
-     * Alternate dash sequence that only functions when the player is on the ground.
-     * It only occurs on the ground while crouching, and grants a damaging hitbox.
-     */
-    private void CrouchSlide()
-    {
-        // Extra logic for altered hitboxes, animations, and stats.
-        StartCoroutine(DashCoroutine(true));
-    }
-
-    /*
-     * Moves the player in the direction provided, with magnitude = dashSpeed.
-     * NOTE: |dir| = 1, if x and y are non-zero, they will be ~0.71 (sine/cosine at 45 degree notches).
-     */
-    private IEnumerator DashCoroutine(bool crouched)
-    {
-        currentDashTime = dashTime;
-        while(currentDashTime > 0) {
-            crouching = crouched;
-            //if (rb.IsTouchingLayers(terrainLayer) && state == MotionState.GROUNDED)
-            //{
-            //    EndDash();
-            //}
-            currentDashTime -= Time.deltaTime;
-            yield return 0;
-        }
-        EndDash();
+        dashAction.StartAction();
     }
 
     /*
@@ -311,10 +281,8 @@ public class PlayerController : MonoBehaviour
      */
     public void EndDash()
     {
-        isDashing = false;
+        //isDashing = false;
         allowPlayerInfluence = true;
-        currentDashTime = 0f;
-        dashCooldownCounter = dashCooldown;
         TallyAirTime();
     }
 
@@ -325,17 +293,6 @@ public class PlayerController : MonoBehaviour
 
     private void InitiateMAttack()
     {
-
-        StartCoroutine(MAttackCoroutine());
-    }
-
-    private IEnumerator MAttackCoroutine()
-    {
-        meleeAttackCounter = meleeAttackCooldown;
-        while(meleeAttackCounter > 0) {
-            meleeAttackCounter -= Time.deltaTime;
-            yield return 0;
-        }
     }
 
     private void EndMAttack()
@@ -350,15 +307,6 @@ public class PlayerController : MonoBehaviour
     private void InitiateRAttack()
     {
 
-    }
-
-    private IEnumerator RAttackCoroutine()
-    {
-        rangedAttackCounter = rangedAttackCooldown;
-        while(rangedAttackCounter> 0) {
-            rangedAttackCounter -= Time.deltaTime;
-            yield return 0;
-        }
     }
 
     private void EndRAttack()
@@ -382,11 +330,11 @@ public class PlayerController : MonoBehaviour
         float total = 0f;
 
         // Overrides
-        if (isDashing && crouching)
+        if (dashAction.IsActive() && crouching)
         {
             return GetForwardVector().x * dashSpeed * 1.1f;
         }
-        else if (isDashing)
+        else if (dashAction.IsActive())
         {
             return dashDir.x * dashSpeed;
         }
@@ -409,7 +357,7 @@ public class PlayerController : MonoBehaviour
         float total = 0f;
 
         // Overrides
-        if (isDashing)
+        if (dashAction.IsActive())
         {
             return dashDir.y * dashSpeed;
         }

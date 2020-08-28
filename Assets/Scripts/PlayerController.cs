@@ -232,7 +232,7 @@ public class PlayerController : MonoBehaviour
         {
             dashDir = _EC.GetForwardVector();
             Debug.Log("Crouch slide!");
-            //CrouchSlide();
+            dashAction.StartAction();
             return;
         }
         dashAction.StartAction();

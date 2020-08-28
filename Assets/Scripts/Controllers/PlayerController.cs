@@ -194,12 +194,11 @@ public class PlayerController : MonoBehaviour
     private void InitiateDash()
     {
         if (!dashAction.IsReady()) return;
-        if (dashAction.IsActive()) return;                       // Cannot spam dashes.
-        if (!canAirDash && _EC.state == EntityController.MotionState.AIR) return;    // If not allowed to air dash while in the air.
+        if (dashAction.IsActive()) return;      // Cannot spam dashes.
+        if (!canAirDash && _EC.state == EntityController.MotionState.AIR) return;       // If not allowed to air dash while in the air.
 
         // Set some parameters immediately.
         isJumping = false;
-        //isDashing = true;
         allowPlayerInfluence = false;
 
         // Save the direction the player is holding input on when the dash initiates.
@@ -215,16 +214,11 @@ public class PlayerController : MonoBehaviour
         if (_EC.directionalInfluence.y < 0 && _EC.state == EntityController.MotionState.GROUNDED)
         {
             dashDir = _EC.GetForwardVector();
-            Debug.Log("Crouch slide!");
-            dashAction.StartAction();
-            return;
         }
+
         dashAction.StartAction();
     }
 
-    /*
-     * 
-     */
     public void EndDash()
     {
         // At the end of the dash, convert any external velocity into momentum in the direction we are going in.

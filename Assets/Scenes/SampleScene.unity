@@ -380,11 +380,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: afb13b02a460a7143a28b6ea2793e73b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  mainCollider: {fileID: 0}
+  headCollider: {fileID: 0}
   state: 0
   currentVelocity: {x: 0, y: 0}
   externalVelocity: {x: 0, y: 0}
   facingRight: 1
-  gravityDir: {x: 0, y: -1}
+  normalVector: {x: 0, y: 1}
   gravityOn: 1
   gravityCoeff: 30
   maxGravitySpeed: 30
@@ -1483,8 +1485,8 @@ GameObject:
   - component: {fileID: 770913026}
   - component: {fileID: 770913025}
   - component: {fileID: 770913024}
-  m_Layer: 0
-  m_Name: New Sprite
+  m_Layer: 8
+  m_Name: Dummy
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1616,7 +1618,7 @@ Rigidbody2D:
   m_Interpolate: 0
   m_SleepingMode: 1
   m_CollisionDetection: 0
-  m_Constraints: 0
+  m_Constraints: 4
 --- !u!114 &770913027
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1629,14 +1631,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: afb13b02a460a7143a28b6ea2793e73b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  mainCollider: {fileID: 0}
+  headCollider: {fileID: 0}
   state: 0
   currentVelocity: {x: 0, y: 0}
   externalVelocity: {x: 0, y: 0}
   facingRight: 1
-  gravityDir: {x: 0, y: 0}
-  gravityOn: 0
-  gravityCoeff: 0
-  maxGravitySpeed: 0
+  normalVector: {x: 0, y: 1}
+  gravityOn: 1
+  gravityCoeff: 30
+  maxGravitySpeed: 30
   subAirTime: 0
   totalAirTime: 0
   directionalInfluence: {x: 0, y: 0}

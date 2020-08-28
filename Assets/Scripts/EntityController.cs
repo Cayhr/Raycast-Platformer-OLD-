@@ -21,7 +21,7 @@ public class EntityController : MonoBehaviour
     public bool facingRight = true;
 
     [Header("Parameters")]
-    public Vector2 gravityDir;
+    public Vector2 normalVector;
     public bool gravityOn;
     public float gravityCoeff;
     public float maxGravitySpeed;
@@ -65,7 +65,7 @@ public class EntityController : MonoBehaviour
     public void Update()
     {
         // Raycast up and down to check for floors.
-        RaycastHit2D floorCheck = Physics2D.CircleCast((Vector2)transform.position + mainCollider.offset, mainCollider.radius, gravityDir, 0.05f, LayerInfo.TERRAIN);
+        RaycastHit2D floorCheck = Physics2D.CircleCast((Vector2)transform.position + mainCollider.offset, mainCollider.radius, normalVector * -1f, 0.05f, LayerInfo.TERRAIN);
         //RaycastHit2D ceilingCheck = Physics2D.CircleCast((Vector2)transform.position + headCollider.offset, 0.49f, Vector2.up, 0.05f, terrainLayer);
 
         // If there is ground below us.
@@ -113,7 +113,7 @@ public class EntityController : MonoBehaviour
      */
     public Vector2 CalculateGravityVector(EntityController en)
     {
-        Vector2 dir = en.gravityDir.normalized;
+        Vector2 dir = en.normalVector.normalized * -1f;
         float gravSpeed = (en.subAirTime * en.gravityCoeff);
         bool uncapped = en.maxGravitySpeed < 0 ? true : false;
         return dir * (uncapped ? gravSpeed : (gravSpeed > en.maxGravitySpeed ? en.maxGravitySpeed : gravSpeed));

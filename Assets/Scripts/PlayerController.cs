@@ -130,26 +130,10 @@ public class PlayerController : MonoBehaviour
 
         // Holding down to CROUCH while on the ground and you are not dashing into the ground.
         if (_EC.state == EntityController.MotionState.GROUNDED && !dashAction.IsActive()) crouching = _EC.directionalInfluence.y < 0 ? true : false;
-        if (crouching)
-        {
-            _EC.headCollider.enabled = false;
-        }
-        else
-        {
-            _EC.headCollider.enabled = true;
-        }
-    }
 
-    /*
-     * We set the velocity of the rigidbody to the final calculated velocity, but also store that information.
-     */
-    /*
-    private void FixedUpdate()
-    {
-        Vector2 finalVelocity = new Vector2(CompoundXVelocities(), CompoundYVelocities());
-        _EC.SetVelocity(finalVelocity);
+        // Enable and disable the top half collider for the player when crouching.
+        _EC.headCollider.enabled = crouching ? false : true;
     }
-    */
 
     /*
      * Logic for any effects that must occur while in the air.
@@ -324,7 +308,7 @@ public class PlayerController : MonoBehaviour
     {
         Vector2 final = Vector2.zero;
         final.x += (_EC.directionalInfluence.x * runSpeed) * (allowPlayerInfluence ? 1f : 0f);
-        if (isJumping) final.y += jumpVelocity;
+        if (isJumping) final += (_EC.normalVector * jumpVelocity);
         return final;
     }
 

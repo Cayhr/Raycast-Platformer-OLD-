@@ -41,7 +41,11 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float runSpeed;
     [SerializeField] private float jumpVelocity;
     [SerializeField] private float dashSpeed;
+    [SerializeField] private float dashTime;                                // Time spent while dashing.
+    [SerializeField] private float dashCooldown;                            // Dash cooldown in seconds after a dash.
     public int maxJumps;
+    [SerializeField] private float meleeAttackCooldown;
+    [SerializeField] private float rangedAttackCooldown;
     [SerializeField] private float jumpTime;
     [SerializeField] private bool canAirDash = false;
     [SerializeField] private float gravityCoeff;
@@ -50,11 +54,11 @@ public class PlayerController : MonoBehaviour
     [Header("Runtime Trackers")]
     [SerializeField] private float subAirTime = 0;
     [SerializeField] private float totalAirTime = 0;
-    [SerializeField] private float dashTime;                                // Time spent while dashing.
     [SerializeField] private float currentDashTime;                         // Counter for time in current dash action.
-    [SerializeField] private float dashCooldown;                            // Dash cooldown in seconds after a dash.
     [SerializeField] private float dashCooldownCounter;                     // Counter for time between dashes.
     [SerializeField] private float jumpTimeCounter;
+    [SerializeField] private float meleeAttackCounter;
+    [SerializeField] private float rangedAttackCounter;
     [SerializeField] private Vector2 directionalInfluence = Vector2.zero;
     [SerializeField] private Vector2 dashDir = Vector2.zero;
 
@@ -79,6 +83,18 @@ public class PlayerController : MonoBehaviour
         {
             if (ctx.started)
                 InitiateDash();
+        };
+
+        playerControls.Player.AttackMelee.started += ctx =>
+        {
+            if (ctx.started)
+                InitiateMAttack();
+        };
+
+        playerControls.Player.AttackGun.started += ctx =>
+        {
+            if (ctx.started)
+                InitiateRAttack();
         };
     }
 
@@ -220,6 +236,10 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    /*================================================================================
+     DASH ACTION LOGIC
+     ================================================================================*/
+
     /*
      * [Gravity Suspension Dash]
      * Cancels all jumps and momentum, and then propels the player in the appointed direction.
@@ -296,6 +316,54 @@ public class PlayerController : MonoBehaviour
         currentDashTime = 0f;
         dashCooldownCounter = dashCooldown;
         TallyAirTime();
+    }
+
+    /*================================================================================
+     MELEE ATTACK LOGIC
+     ================================================================================*/
+
+
+    private void InitiateMAttack()
+    {
+
+        StartCoroutine(MAttackCoroutine());
+    }
+
+    private IEnumerator MAttackCoroutine()
+    {
+        meleeAttackCounter = meleeAttackCooldown;
+        while(meleeAttackCounter > 0) {
+            meleeAttackCounter -= Time.deltaTime;
+            yield return 0;
+        }
+    }
+
+    private void EndMAttack()
+    {
+
+    }
+
+    /*================================================================================
+     RANGED ATTACK LOGIC
+     ================================================================================*/
+
+    private void InitiateRAttack()
+    {
+
+    }
+
+    private IEnumerator RAttackCoroutine()
+    {
+        rangedAttackCounter = rangedAttackCooldown;
+        while(rangedAttackCounter> 0) {
+            rangedAttackCounter -= Time.deltaTime;
+            yield return 0;
+        }
+    }
+
+    private void EndRAttack()
+    {
+
     }
 
     /*

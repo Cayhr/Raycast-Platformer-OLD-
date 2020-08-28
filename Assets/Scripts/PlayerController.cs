@@ -30,11 +30,11 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private Vector2 currentVelocity = Vector2.zero;
     [SerializeField] private Vector2 externalVelocity = Vector2.zero;
     [SerializeField] private int jumps;
-    [SerializeField] private int dashes;
     [SerializeField] private bool crouching = false;
     [SerializeField] private bool facingRight = true;
     [SerializeField] private bool isJumping = false;
     [SerializeField] private bool isDashing = false;
+    [SerializeField] private bool canDash = true;
     [SerializeField] private bool allowPlayerInfluence = true;
 
     [Header("Parameters")]
@@ -42,7 +42,6 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float jumpVelocity;
     [SerializeField] private float dashSpeed;
     public int maxJumps;
-    public int maxDashes;
     [SerializeField] private float jumpTime;
     [SerializeField] private bool canAirDash = false;
     [SerializeField] private float gravityCoeff;
@@ -51,8 +50,10 @@ public class PlayerController : MonoBehaviour
     [Header("Runtime Trackers")]
     [SerializeField] private float subAirTime = 0;
     [SerializeField] private float totalAirTime = 0;
-    [SerializeField] private float dashTime;
-    [SerializeField] private float currentDashTime;
+    [SerializeField] private float dashTime;                                // Time spent while dashing.
+    [SerializeField] private float currentDashTime;                         // Counter for time in current dash action.
+    [SerializeField] private float dashCooldown;                            // Dash cooldown in seconds after a dash.
+    [SerializeField] private float dashCooldownCounter;                     // Counter for time between dashes.
     [SerializeField] private float jumpTimeCounter;
     [SerializeField] private Vector2 directionalInfluence = Vector2.zero;
     [SerializeField] private Vector2 dashDir = Vector2.zero;
@@ -120,11 +121,13 @@ public class PlayerController : MonoBehaviour
             WhileInAir();
         }
 
-        // if (ceilingCheck.collider != null)
-        // {
-        //     HitCeiling();
-        // }
+        // Regenerate the dash action.
+        if (!isDashing && dashCooldownCounter > 0)
+        {
+            dashCooldownCounter -= Time.deltaTime;
+        }
 
+        // While holding jump, keep going until the max jump is achieved, and then drop afterwards.
         if (isJumping)
         {
             if (jumpTimeCounter > 0)
@@ -149,6 +152,7 @@ public class PlayerController : MonoBehaviour
         {
             headCollider.enabled = true;
         }
+
         if (directionalInfluence.x > 0) facingRight = true;
         if (directionalInfluence.x < 0) facingRight = false;
     }
@@ -181,7 +185,7 @@ public class PlayerController : MonoBehaviour
     private void OnLanding()
     {
         state = MotionState.GROUNDED;
-        RestoreHops();
+        RestoreMovementOptions();
         ResetAirTime();
     }
 
@@ -197,8 +201,6 @@ public class PlayerController : MonoBehaviour
             isJumping = true;
             jumpTimeCounter = jumpTime;
             crouching = false;
-            if (!canAirDash)
-                dashes = 0;
             TallyAirTime();
             jumps--;
         }
@@ -225,8 +227,9 @@ public class PlayerController : MonoBehaviour
      */
     private void InitiateDash()
     {
-        if (isDashing) return;
-        if (!canAirDash && state == MotionState.AIR) return;
+        if (dashCooldownCounter > 0) return;
+        if (isDashing) return;                                  // Cannot spam dashes.
+        if (!canAirDash && state == MotionState.AIR) return;    // If not allowed to air dash while in the air.
 
         // Set some parameters immediately.
         isJumping = false;
@@ -291,6 +294,7 @@ public class PlayerController : MonoBehaviour
         isDashing = false;
         allowPlayerInfluence = true;
         currentDashTime = 0f;
+        dashCooldownCounter = dashCooldown;
         TallyAirTime();
     }
 
@@ -360,11 +364,15 @@ public class PlayerController : MonoBehaviour
         TallyAirTime();
     }
 
-    public void RestoreHops()
+    public void RestoreMovementOptions()
     {
         jumps = maxJumps;
-        dashes = maxDashes;
         jumpTimeCounter = jumpTime;
+    }
+
+    public void SetJumps(int j)
+    {
+        jumps = j;
     }
 
     public void TallyAirTime()

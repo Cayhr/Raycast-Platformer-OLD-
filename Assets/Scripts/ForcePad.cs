@@ -28,9 +28,11 @@ public class ForcePad : MonoBehaviour
         PlayerController entity = collision.gameObject.GetComponent<PlayerController>();
         if (entity == null) return;
 
+        entity.SetJumps(entity.maxJumps - 1);
+
         // EndDash() also calls TallyAirTime(), so it will be properly reset.
-        entity.RestoreHops();
-        entity.EndDash();   // Redundant if the entity is not doing a Gravity Suspension Dash.
+        // Redundant if the entity is not doing a Gravity Suspension Dash.
+        entity.EndDash();
         entity.ApplyVelocity(transform.up, pushForce);
     }
 }

@@ -227,7 +227,8 @@ public class PlayerController : MonoBehaviour
      */
     public void EndDash()
     {
-        //isDashing = false;
+        // At the end of the dash, convert any external velocity into momentum in the direction we are going in.
+        _EC.externalVelocity = _EC.externalVelocity.magnitude * dashDir;
         allowPlayerInfluence = true;
         _EC.TallyAirTime();
     }
@@ -318,53 +319,6 @@ public class PlayerController : MonoBehaviour
         if (_EC.state == EntityController.MotionState.GROUNDED) final.x = crouching ? CROUCH_SPEED_MULT : 1f;
         return final;
     }
-
-    /*
-    private float CompoundXVelocities()
-    {
-        // Baseline set total to player influence run speed.
-        float total = 0f;
-
-        // Overrides
-        if (dashAction.IsActive() && crouching)
-        {
-            return _EC.GetForwardVector().x * dashSpeed * 1.1f;
-        }
-        else if (dashAction.IsActive())
-        {
-            return dashDir.x * dashSpeed;
-        }
-
-        // Compounds
-        total += _EC.externalVelocity.x;
-
-        // Multipliers
-
-        return total;
-    }
-
-    private float CompoundYVelocities()
-    {
-        float total = 0f;
-
-        // Overrides
-        if (dashAction.IsActive())
-        {
-            return dashDir.y * dashSpeed;
-        }
-
-        // Compounds 
-        float totalGrav = subAirTime * gravityCoeff;
-        total -= totalGrav > maxGravitySpeed ? maxGravitySpeed : totalGrav;
-        total += _EC.externalVelocity.y;
-        if (isJumping)
-            total += jumpVelocity;
-
-        // Multipliers
-
-        return total;
-    }
-    */
 
     private void HitCeiling()
     {

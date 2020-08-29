@@ -98,6 +98,7 @@ public class PlayerController : MonoBehaviour
         gunAction = gameObject.AddComponent<ActionTimer>();
         gunAction.Init(null, EndRAttack, gunAttackTime, gunAttackCooldown, 0f);
         swingHitbox.SetActive(false);
+        _EC.faction = FactionList.PLAYER;
     }
 
     // Update is called once per frame

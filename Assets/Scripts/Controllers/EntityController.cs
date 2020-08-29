@@ -4,6 +4,7 @@ using UnityEngine;
 
 public delegate Vector2 VelocityCompoundMethod();
 public delegate void StateChangeAction();
+public enum FactionList { NEUTRAL, PLAYER, ENEMIES};
 
 public class EntityController : MonoBehaviour
 {
@@ -14,13 +15,18 @@ public class EntityController : MonoBehaviour
     private VelocityCompoundMethod vOverride, vAdd, vMult;
     private StateChangeAction eOnLanding;
 
+    [Header("Entity Descriptors")]
+    public string entityName;
+    public int health, maxHealth;
+    public FactionList faction;
+
     [Header("Runtime Statistics")]
     public MotionState state;
     public Vector2 currentVelocity = Vector2.zero;
     public Vector2 externalVelocity = Vector2.zero;
     public bool facingRight = true;
 
-    [Header("Parameters")]
+    [Header("Physics Parameters")]
     public Vector2 normalVector;
     public bool gravityOn;
     public float gravityCoeff;
@@ -165,4 +171,12 @@ public class EntityController : MonoBehaviour
         externalVelocity = Vector2.Lerp(externalVelocity, Vector2.zero, rate);
     }
 
+    private void OnTriggerEnter2D(Collider2D collision)
+    {
+        // First check if the Trigger entered is a hitbox.
+        HitboxFramework en;
+        en = collision.gameObject.GetComponent<HitboxFramework>();
+        if (en == null) return;
+        en.OnHit(this);
+    }
 }

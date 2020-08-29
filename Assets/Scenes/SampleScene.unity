@@ -166,7 +166,7 @@ PrefabInstance:
     - target: {fileID: 6299391573618993865, guid: 9d66a4c10532a5a4c92aaffeb8ad0828,
         type: 3}
       propertyPath: m_RootOrder
-      value: 12
+      value: 13
       objectReference: {fileID: 0}
     - target: {fileID: 6299391573618993865, guid: 9d66a4c10532a5a4c92aaffeb8ad0828,
         type: 3}
@@ -235,7 +235,7 @@ PrefabInstance:
     - target: {fileID: 6299391573618993865, guid: 9d66a4c10532a5a4c92aaffeb8ad0828,
         type: 3}
       propertyPath: m_RootOrder
-      value: 10
+      value: 11
       objectReference: {fileID: 0}
     - target: {fileID: 6299391573618993865, guid: 9d66a4c10532a5a4c92aaffeb8ad0828,
         type: 3}
@@ -382,6 +382,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   mainCollider: {fileID: 0}
   headCollider: {fileID: 0}
+  entityName: Nagisa Konata
+  health: 3
+  maxHealth: 3
+  faction: 1
   state: 0
   currentVelocity: {x: 0, y: 0}
   externalVelocity: {x: 0, y: 0}
@@ -482,8 +486,9 @@ GameObject:
   m_Component:
   - component: {fileID: 344472874}
   - component: {fileID: 344472873}
+  - component: {fileID: 344472876}
   - component: {fileID: 344472875}
-  m_Layer: 0
+  m_Layer: 11
   m_Name: Box
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -529,12 +534,12 @@ SpriteRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
-  m_Sprite: {fileID: 21300000, guid: fca98a2849924ae42af31e2ddc0ecce9, type: 3}
+  m_Sprite: {fileID: 21300000, guid: a9a8053d991f8c9409176cb6fdb1ddbe, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
-  m_Size: {x: 2, y: 2}
+  m_Size: {x: 8, y: 6}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
@@ -548,7 +553,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 344472872}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 1, y: 0, z: 0}
+  m_LocalPosition: {x: 2, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 1373288502}
@@ -567,19 +572,32 @@ BoxCollider2D:
   m_IsTrigger: 1
   m_UsedByEffector: 0
   m_UsedByComposite: 0
-  m_Offset: {x: 0, y: 0}
+  m_Offset: {x: 1, y: 0}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0.5, y: 0.5}
-    oldSize: {x: 2, y: 2}
-    newSize: {x: 2, y: 2}
+    oldSize: {x: 8, y: 6}
+    newSize: {x: 8, y: 6}
     adaptiveTilingThreshold: 0.5
     drawMode: 0
     adaptiveTiling: 0
-  m_AutoTiling: 0
+  m_AutoTiling: 1
   serializedVersion: 2
-  m_Size: {x: 2, y: 2}
+  m_Size: {x: 6, y: 6}
   m_EdgeRadius: 0
+--- !u!114 &344472876
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 344472872}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9b4495f62fcd79248b30ae61a7c1907a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _PC: {fileID: 337235394}
 --- !u!1 &488000322
 GameObject:
   m_ObjectHideFlags: 0
@@ -736,7 +754,7 @@ Transform:
   m_LocalScale: {x: 4, y: 4, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
-  m_RootOrder: 5
+  m_RootOrder: 6
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!68 &488000326
 EdgeCollider2D:
@@ -1137,7 +1155,7 @@ Transform:
   m_LocalScale: {x: 4, y: 4, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
-  m_RootOrder: 7
+  m_RootOrder: 8
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &644639116
 GameObject:
@@ -1397,7 +1415,7 @@ Transform:
   m_LocalScale: {x: 4, y: 4, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
-  m_RootOrder: 3
+  m_RootOrder: 4
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &668553595
 GameObject:
@@ -1554,7 +1572,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
-  m_RootOrder: 13
+  m_RootOrder: 1
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!58 &770913024
 CircleCollider2D:
@@ -1633,6 +1651,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   mainCollider: {fileID: 0}
   headCollider: {fileID: 0}
+  entityName: Test Dummy
+  health: 10
+  maxHealth: 10
+  faction: 2
   state: 0
   currentVelocity: {x: 0, y: 0}
   externalVelocity: {x: 0, y: 0}
@@ -1723,7 +1745,7 @@ Transform:
   m_LocalScale: {x: 3, y: 3, z: 3}
   m_Children: []
   m_Father: {fileID: 0}
-  m_RootOrder: 2
+  m_RootOrder: 3
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1354364746
 GameObject:
@@ -1907,7 +1929,7 @@ Transform:
   m_LocalScale: {x: 4, y: 4, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
-  m_RootOrder: 6
+  m_RootOrder: 7
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1373288501
 GameObject:
@@ -1918,13 +1940,13 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1373288502}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: AttackHitbox
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &1373288502
 Transform:
   m_ObjectHideFlags: 0
@@ -1933,8 +1955,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1373288501}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 2, y: 1, z: 1}
+  m_LocalPosition: {x: 1, y: 0, z: 0}
+  m_LocalScale: {x: 0.7, y: 0.5, z: 1}
   m_Children:
   - {fileID: 344472874}
   m_Father: {fileID: 337235393}
@@ -2010,7 +2032,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
-  m_RootOrder: 1
+  m_RootOrder: 2
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1534798739
 PrefabInstance:
@@ -2057,7 +2079,7 @@ PrefabInstance:
     - target: {fileID: 6299391573618993865, guid: 9d66a4c10532a5a4c92aaffeb8ad0828,
         type: 3}
       propertyPath: m_RootOrder
-      value: 11
+      value: 12
       objectReference: {fileID: 0}
     - target: {fileID: 6299391573618993865, guid: 9d66a4c10532a5a4c92aaffeb8ad0828,
         type: 3}
@@ -2282,7 +2304,7 @@ Transform:
   m_LocalScale: {x: 4, y: 4, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
-  m_RootOrder: 4
+  m_RootOrder: 5
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!68 &1825637723
 EdgeCollider2D:
@@ -2405,7 +2427,7 @@ PrefabInstance:
     - target: {fileID: 3475054170401741836, guid: e7ef2d3f0714d914297e9a4a827baae6,
         type: 3}
       propertyPath: m_RootOrder
-      value: 8
+      value: 9
       objectReference: {fileID: 0}
     - target: {fileID: 3475054170401741836, guid: e7ef2d3f0714d914297e9a4a827baae6,
         type: 3}
@@ -2484,7 +2506,7 @@ PrefabInstance:
     - target: {fileID: 6299391573618993865, guid: 9d66a4c10532a5a4c92aaffeb8ad0828,
         type: 3}
       propertyPath: m_RootOrder
-      value: 9
+      value: 10
       objectReference: {fileID: 0}
     - target: {fileID: 6299391573618993865, guid: 9d66a4c10532a5a4c92aaffeb8ad0828,
         type: 3}

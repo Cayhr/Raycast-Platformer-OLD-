@@ -5,10 +5,10 @@ using UnityEngine;
 public delegate Vector2 VelocityCompoundMethod();
 public delegate void StateChangeAction();
 public enum FactionList { NEUTRAL, PLAYER, ENEMIES};
+public enum EntityMotionState { GROUNDED, AIR, CLUTCH };
 
 public class EntityController : MonoBehaviour
 {
-    public enum MotionState { GROUNDED, AIR, CLUTCH };
     private Rigidbody2D rb;
     public CircleCollider2D mainCollider;
     public BoxCollider2D headCollider;
@@ -21,7 +21,7 @@ public class EntityController : MonoBehaviour
     public FactionList faction;
 
     [Header("Runtime Statistics")]
-    public MotionState state;
+    public EntityMotionState state;
     public Vector2 currentVelocity = Vector2.zero;
     public Vector2 externalVelocity = Vector2.zero;
     public bool facingRight = true;
@@ -78,14 +78,14 @@ public class EntityController : MonoBehaviour
         if (floorCheck.collider != null)
         {
             // If we just hit the ground coming out from another state, reset jumps and air statistics.
-            if (state != MotionState.GROUNDED) OnLanding();
+            if (state != EntityMotionState.GROUNDED) OnLanding();
         }
         // If we don't detect any ground below us, go ahead and fall off.
         else
         {
             // TODO: One-time "we left the ground" check.
             // The first frame we leave coyote time, subtract a jump.
-            state = MotionState.AIR;
+            state = EntityMotionState.AIR;
             subAirTime += Time.deltaTime;
 
             //WhileInAir();
@@ -127,7 +127,7 @@ public class EntityController : MonoBehaviour
 
     private void OnLanding()
     {
-        state = MotionState.GROUNDED;
+        state = EntityMotionState.GROUNDED;
         eOnLanding?.Invoke();
         ResetAirTime();
     }
@@ -177,6 +177,7 @@ public class EntityController : MonoBehaviour
         HitboxFramework en;
         en = collision.gameObject.GetComponent<HitboxFramework>();
         if (en == null) return;
+        if (en.blacklist.Contains(faction)) return;
         en.OnHit(this);
     }
 }

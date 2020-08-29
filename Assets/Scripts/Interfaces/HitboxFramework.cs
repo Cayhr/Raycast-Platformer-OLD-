@@ -4,7 +4,7 @@ using UnityEngine;
 
 public abstract class HitboxFramework : MonoBehaviour
 {
-    private int faction;
+    public List<FactionList> blacklist;
 
     /*
      * The on hit function.

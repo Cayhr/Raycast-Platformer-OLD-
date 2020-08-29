@@ -106,7 +106,7 @@ public class PlayerController : MonoBehaviour
     {
         _EC.directionalInfluence = playerControls.Player.Move.ReadValue<Vector2>();
 
-        if (_EC.state == EntityController.MotionState.AIR)
+        if (_EC.state == EntityMotionState.AIR)
         {
             if (_EC.subAirTime == COYOTE_TIME && !isJumping)
             {
@@ -130,7 +130,7 @@ public class PlayerController : MonoBehaviour
         }
 
         // Holding down to CROUCH while on the ground and you are not dashing into the ground.
-        if (_EC.state == EntityController.MotionState.GROUNDED && !dashAction.IsActive()) crouching = _EC.directionalInfluence.y < 0 ? true : false;
+        if (_EC.state == EntityMotionState.GROUNDED && !dashAction.IsActive()) crouching = _EC.directionalInfluence.y < 0 ? true : false;
 
         // Enable and disable the top half collider for the player when crouching.
         _EC.headCollider.enabled = crouching ? false : true;
@@ -159,7 +159,7 @@ public class PlayerController : MonoBehaviour
      */
     private void InitiateJump()
     {
-        if (_EC.state == EntityController.MotionState.GROUNDED || _EC.totalAirTime < COYOTE_TIME || jumps > 0)
+        if (_EC.state == EntityMotionState.GROUNDED || _EC.totalAirTime < COYOTE_TIME || jumps > 0)
         {
             isJumping = true;
             jumpTimeCounter = jumpTime;
@@ -196,7 +196,7 @@ public class PlayerController : MonoBehaviour
     {
         if (!dashAction.IsReady()) return;
         if (dashAction.IsActive()) return;      // Cannot spam dashes.
-        if (!canAirDash && _EC.state == EntityController.MotionState.AIR) return;       // If not allowed to air dash while in the air.
+        if (!canAirDash && _EC.state == EntityMotionState.AIR) return;       // If not allowed to air dash while in the air.
 
         // Set some parameters immediately.
         isJumping = false;
@@ -212,7 +212,7 @@ public class PlayerController : MonoBehaviour
         }
 
         // If we are on the ground and we press dash, perform a ground dash instead.
-        if (_EC.directionalInfluence.y < 0 && _EC.state == EntityController.MotionState.GROUNDED)
+        if (_EC.directionalInfluence.y < 0 && _EC.state == EntityMotionState.GROUNDED)
         {
             dashDir = _EC.GetForwardVector();
         }
@@ -246,12 +246,21 @@ public class PlayerController : MonoBehaviour
         // Figure out the direction the swing should face.
         Vector2 dir = _EC.GetForwardVector();
         Vector2 currentDI = _EC.directionalInfluence;
-        if (currentDI != Vector2.zero)
-        {
-            dir.x = currentDI.x;
-            dir.y = currentDI.y;
-            if (_EC.state == EntityController.MotionState.GROUNDED && currentDI.y < 0) dir.y = 0f;
+
+        switch(_EC.state){
+            case EntityMotionState.GROUNDED:
+                if (currentDI.x != 0f) dir.x = currentDI.x;
+                dir.y = (currentDI.y < 0f) ? 0f : currentDI.y;
+
+                if (currentDI == Vector2.up) dir = Vector2.up;
+                break;
+            case EntityMotionState.CLUTCH:
+                break;
+            default:    // Air, where every direction of DI is valid.
+                dir = currentDI;
+                break;
         }
+
         swingHitbox.transform.rotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg);
         swingHitbox.SetActive(true);
         meleeAction.StartAction();
@@ -311,7 +320,7 @@ public class PlayerController : MonoBehaviour
     private Vector2 MultiplyVelocities()
     {
         Vector2 final = Vector2.one;
-        if (_EC.state == EntityController.MotionState.GROUNDED) final.x = crouching ? CROUCH_SPEED_MULT : 1f;
+        if (_EC.state == EntityMotionState.GROUNDED) final.x = crouching ? CROUCH_SPEED_MULT : 1f;
         return final;
     }
 

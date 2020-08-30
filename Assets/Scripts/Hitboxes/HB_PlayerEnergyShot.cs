@@ -8,11 +8,11 @@ public class HB_PlayerEnergyShot : HitboxFramework
     {
         // Play some special FX!
         en.health -= 1;
-        Destroy(gameObject);
     }
 
     private void OnCollisionEnter2D(Collision2D collision)
     {
         Debug.Log("Hit something!");
+        Destroy(gameObject);
     }
 }

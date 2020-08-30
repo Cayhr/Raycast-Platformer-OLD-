@@ -11,6 +11,11 @@ public abstract class HitboxFramework : MonoBehaviour
      */
     public abstract void OnHit(EntityController en);
 
+    protected EntityController EntityFromCollision(Collision2D collision)
+    {
+        EntityController en = collision.gameObject.GetComponent<EntityController>();
+        return en;
+    }
     /*
     public void Init(int fac)
     {

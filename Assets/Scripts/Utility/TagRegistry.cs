@@ -8,8 +8,8 @@
 public class TagRegistry
 {
     //public string X = "X";
-    public string Player = "Player";
-    public string Enemy = "Enemy";
-    public string Hitbox = "Hitbox";
-    public string Terrain = "Terrain";
+    public static string Player = "Player";
+    public static string Enemy = "Enemy";
+    public static string Hitbox = "Hitbox";
+    public static string Terrain = "Terrain";
 }

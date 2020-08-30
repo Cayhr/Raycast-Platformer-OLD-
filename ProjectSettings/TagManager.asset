@@ -8,6 +8,7 @@ TagManager:
   - Enemy
   - Hitbox
   - Terrain
+  - Projectile
   layers:
   - Default
   - TransparentFX
@@ -44,4 +45,19 @@ TagManager:
   m_SortingLayers:
   - name: Default
     uniqueID: 0
+    locked: 0
+  - name: Background
+    uniqueID: 3664337281
+    locked: 0
+  - name: Midground
+    uniqueID: 3746363607
+    locked: 0
+  - name: Entities
+    uniqueID: 3043828773
+    locked: 0
+  - name: VisualEffects
+    uniqueID: 3034837281
+    locked: 0
+  - name: Foreground
+    uniqueID: 4135564447
     locked: 0

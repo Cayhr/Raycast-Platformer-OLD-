@@ -98,6 +98,7 @@ public class EntityController : MonoBehaviour
     {
         currentVelocity = CompoundVelocities(vOverride, vAdd, vMult);
         rb.velocity = currentVelocity;
+        //rb.MovePosition((Vector2)transform.position + currentVelocity);
         DecayExternalVelocity(0.1f);
     }
 

@@ -244,23 +244,27 @@ public class PlayerController : MonoBehaviour
         if (meleeAction.IsActive()) return;
 
         // Figure out the direction the swing should face.
-        Vector2 dir = _EC.GetForwardVector();
-        Vector2 currentDI = _EC.directionalInfluence;
+        Vector2 dir = (_EC.directionalInfluence != Vector2.zero) ? _EC.directionalInfluence : _EC.GetForwardVector();
 
-        switch(_EC.state){
-            case EntityMotionState.GROUNDED:
-                if (currentDI.x != 0f) dir.x = currentDI.x;
-                dir.y = (currentDI.y < 0f) ? 0f : currentDI.y;
+        // On ground, we cannot attack downwards.
+        if (_EC.state == EntityMotionState.GROUNDED && dir.y < 0f) dir = _EC.GetForwardVector();
 
-                if (currentDI == Vector2.up) dir = Vector2.up;
-                break;
-            case EntityMotionState.CLUTCH:
-                break;
-            default:    // Air, where every direction of DI is valid.
-                dir = currentDI;
-                break;
-        }
+        PositionAndStartMAttack(dir);
+    }
 
+    // Override for controllers to use tilt-stick style aerials.
+    private void InitiateMAttack(Vector2 dir)
+    {
+        if (!meleeAction.IsReady()) return;
+        if (meleeAction.IsActive()) return;
+
+        if (dir == Vector2.zero) Debug.LogError("Tilt stick returned 0,0");
+
+        PositionAndStartMAttack(dir);
+    }
+
+    private void PositionAndStartMAttack(Vector2 dir)
+    {
         swingHitbox.transform.rotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg);
         swingHitbox.SetActive(true);
         meleeAction.StartAction();

@@ -49,6 +49,7 @@ public class PlayerController : MonoBehaviour
     [Header("Runtime Trackers")]
     [SerializeField] private float jumpTimeCounter;
     [SerializeField] private Vector2 dashDir = Vector2.zero;
+    public Vector2 lastSwingDirection;
 
     private void Awake()
     {
@@ -245,20 +246,10 @@ public class PlayerController : MonoBehaviour
 
         // Figure out the direction the swing should face.
         Vector2 dir = (_EC.directionalInfluence != Vector2.zero) ? _EC.directionalInfluence : _EC.GetForwardVector();
+        lastSwingDirection = dir;
 
         // On ground, we cannot attack downwards.
         if (_EC.state == EntityMotionState.GROUNDED && dir.y < 0f) dir = _EC.GetForwardVector();
-
-        PositionAndStartMAttack(dir);
-    }
-
-    // Override for controllers to use tilt-stick style aerials.
-    private void InitiateMAttack(Vector2 dir)
-    {
-        if (!meleeAction.IsReady()) return;
-        if (meleeAction.IsActive()) return;
-
-        if (dir == Vector2.zero) Debug.LogError("Tilt stick returned 0,0");
 
         PositionAndStartMAttack(dir);
     }

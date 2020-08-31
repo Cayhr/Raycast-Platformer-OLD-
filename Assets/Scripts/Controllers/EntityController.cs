@@ -15,7 +15,7 @@ public class EntityController : MonoBehaviour
     //public CircleCollider2D mainCollider;
     //public BoxCollider2D headCollider;
     private VelocityCompoundMethod vOverride, vAdd, vMult;
-    private StateBasedAction sbaOnLanding, sbaWhileInAir;
+    private StateBasedAction sbaOnLanding, sbaWhileInAir, sbaCollisionX, sbaCollisionY;
 
     [Header("References")]
     // The forms this Entity can take. At a minimum, are a GameObject with sprite and collider.
@@ -119,11 +119,6 @@ public class EntityController : MonoBehaviour
         Vector2 moveY = Vector2.zero;
         int yHits = RaycastY(normalVector * Mathf.Sign(currentVelocity.y), scaledVelocity.y, ref moveY);
 
-        if (!gameObject.CompareTag("Player"))
-        {
-            Debug.Log(formBounds.center);
-        }
-
         // We use Translate because Rigidbody2D.MovePosition() creates weird jittering situations. Translate is more precise!
         transform.Translate(moveX + moveY);
 
@@ -139,9 +134,17 @@ public class EntityController : MonoBehaviour
     }
 
     /*
-     * RaycastX: Calculate the movement vector we need to travel along the relative X axis.
      * Along the subdivided points of the height faces of the BoxCollider2D in the direction of movement,
      *  raycast in those directions and detect collisions. Translate the entity appropriately.
+     * ---------------------------------------------------------------------------------------------------------------------------
+     * RaycastX: Calculate the movement vector we need to travel along the relative X axis.
+     * ---------------------------------------------------------------------------------------------------------------------------
+     * RaycastY: Calculate the movement vector we need to travel along the relative X axis.
+     *  If we have negative velocity and we hit ground, we landed (taken care of in Update).
+     * ---------------------------------------------------------------------------------------------------------------------------
+     * <BUG WORKAROUND>: Within the loop on both X and Y, the Vector2 `origin` uses the formObject's transform position,
+     *  rather than the Bounds component's center.
+     *  The latter was not returning an updated world position for non-player Entities.
      */
     private int RaycastX(Vector2 normDir, float rawVelocity, ref Vector2 finalVel)
     {
@@ -158,16 +161,21 @@ public class EntityController : MonoBehaviour
             Vector2 origin = (Vector2)formObject.transform.position + new Vector2(relativeHeightPoints[i].x * normDir.x, relativeHeightPoints[i].y);
             RaycastHit2D hit = Physics2D.Raycast(origin, normDir, castDist, LayerInfo.OBSTACLES);
 
-            Debug.DrawRay(origin, normDir * castDist, Color.red);
+            //Debug.DrawRay(origin, normDir * castDist, Color.red);
             // If the raycast hit a collider: Find the point of contact.
             if (hit)
             {
                 hits++;
-                externalVelocity.x = 0f;
                 if (hit.distance == 0) continue;
                 float hitDist = hit.distance - RAYCAST_INLET;
                 if (hitDist < closestDelta) closestDelta = hitDist;
             }
+        }
+
+        if (hits > 0)
+        {
+            sbaCollisionX?.Invoke();
+            externalVelocity.x = 0f;
         }
 
         // Return the Vector2 for movement along the X axis of the entity.
@@ -175,12 +183,6 @@ public class EntityController : MonoBehaviour
         return hits;
     }
 
-    /*
-     * RaycastY: Calculate the movement vector we need to travel along the relative Y axis.
-     * Along the subdivided points of the base faces of the BoxCollider2D in the direction of movement,
-     *  raycast in those directions and detect collisions. Translate the entity appropriately.
-     * If we have negative velocity and we hit ground, we landed (taken care of in Update).
-     */
     private int RaycastY(Vector2 normDir, float rawVelocity, ref Vector2 finalVel)
     {
         // If we aren't moving, save computation cycles by not doing anything.
@@ -196,12 +198,11 @@ public class EntityController : MonoBehaviour
             Vector2 origin = (Vector2)formObject.transform.position + new Vector2(relativeBasePoints[i].x, relativeBasePoints[i].y * normDir.y);
             RaycastHit2D hit = Physics2D.Raycast(origin, normDir, castDist, LayerInfo.OBSTACLES);
 
-            Debug.DrawRay(origin, normDir * castDist, Color.red);
+            //Debug.DrawRay(origin, normDir * castDist, Color.red);
             // If the raycast hit a collider: Find the point of contact.
             if (hit)
             {
                 hits++;
-                externalVelocity.y = 0f;
                 if (hit.distance == 0) continue;
                 float hitDist = hit.distance - RAYCAST_INLET;
                 if (hitDist < closestDelta) closestDelta = hitDist;
@@ -209,10 +210,15 @@ public class EntityController : MonoBehaviour
         }
 
         // If we have 1 or more hits while descending, we landed on ground.
-        if (hits > 0 && rawVelocity < 0f)
+        if (hits > 0)
         {
-            state = EntityMotionState.GROUNDED;
-            OnLanding();
+            sbaCollisionY?.Invoke();
+            externalVelocity.y = 0f;
+            if (rawVelocity < 0f)
+            {
+                state = EntityMotionState.GROUNDED;
+                OnLanding();
+            }
         }
 
         // Return the Vector2 for movement along the Y axis of the entity.

@@ -38,8 +38,9 @@ public class EntityController : MonoBehaviour
 
     [Header("Physics Parameters")]
     public Vector2 normalVector;
+    public Vector2 rightVector;
     public bool gravityOn;
-    public float gravityCoeff, maxGravitySpeed, inertialDampening, dampeningCutoff;
+    public float gravityCoeff, maxGravitySpeed, inertialDampening, dampeningCutoff, maxClimbAngle;
     [SerializeField] int rayPrecisionBase, rayPrecisionHeight;    // The amount of extra points BETWEEN the 2 on the edges.
 
     [Header("Runtime Trackers")]
@@ -63,6 +64,7 @@ public class EntityController : MonoBehaviour
             gameObject.SetActive(false);
         }
         ChangeForm(formIndex);
+        ChangeNormalVector(normalVector);
         if (rb == null)
         {
             Debug.LogError("Missing Rigidbody2D for " + gameObject);
@@ -110,13 +112,20 @@ public class EntityController : MonoBehaviour
     private void RaycastMovement()
     {
         Vector2 scaledVelocity = currentVelocity * Time.deltaTime;
+        Vector2 moveX = Vector2.zero;
+        Vector2 moveY = Vector2.zero;
+
+        // If we are on the ground, we should check if we are still on it.
+        // Slap the results of the ground checks in moveY, even though we don't use it anymore.
+        int groundChecks = (state == EntityMotionState.GROUNDED) ? RaycastY(normalVector * -1f, RAYCAST_INLET * 2 , ref moveY) : 0;
+
+        // If there is no ground below us.
+        if (groundChecks == 0) WhileInAir();
 
         // Perpendicular of inverse of the normal points in the positive X direction, or (1, 0) on unit circle.
-        Vector2 moveX = Vector2.zero;
-        int xHits = RaycastX(Vector2.Perpendicular(normalVector * -1f) * Mathf.Sign(currentVelocity.x), scaledVelocity.x, ref moveX);
+        int xHits = RaycastX(rightVector * Mathf.Sign(currentVelocity.x), scaledVelocity.x, ref moveX);
 
         // Normal Vector points "up".
-        Vector2 moveY = Vector2.zero;
         int yHits = RaycastY(normalVector * Mathf.Sign(currentVelocity.y), scaledVelocity.y, ref moveY);
 
         // We use Translate because Rigidbody2D.MovePosition() creates weird jittering situations. Translate is more precise!
@@ -125,12 +134,6 @@ public class EntityController : MonoBehaviour
         // Sync after every transform translation.
         Physics2D.SyncTransforms();
 
-        // If we are on the ground, we should check if we are still on it.
-        // Slap the results of the ground checks in moveY, even though we don't use it anymore.
-        int groundChecks = (state == EntityMotionState.GROUNDED) ? RaycastY(normalVector * -1f, RAYCAST_INLET * 2, ref moveY) : 0;
-
-        // If there is no ground below us.
-        if (groundChecks == 0) WhileInAir();
     }
 
     /*
@@ -148,6 +151,7 @@ public class EntityController : MonoBehaviour
      */
     private int RaycastX(Vector2 normDir, float rawVelocity, ref Vector2 finalVel)
     {
+        bool DEBUG = true;
         // If we aren't moving, save computation cycles by not doing anything.
         if ((normDir * rawVelocity) == Vector2.zero) return 0;
         // If the distance to cast is negative, turn it positive. Also compensate for RAYCAST_INLET.
@@ -155,20 +159,31 @@ public class EntityController : MonoBehaviour
         if (castDist <= RAYCAST_INLET) castDist = 2 * RAYCAST_INLET;
 
         float closestDelta = castDist;
+        Vector2 slopeVelocity = Vector2.zero;
         int hits = 0;
         for (int i = 0; i < rayPrecisionHeight; i++)
         {
             Vector2 origin = (Vector2)formObject.transform.position + new Vector2(relativeHeightPoints[i].x * normDir.x, relativeHeightPoints[i].y);
             RaycastHit2D hit = Physics2D.Raycast(origin, normDir, castDist, LayerInfo.OBSTACLES);
 
-            //Debug.DrawRay(origin, normDir * castDist, Color.red);
             // If the raycast hit a collider: Find the point of contact.
             if (hit)
             {
+                if (DEBUG) Debug.DrawRay(origin, normDir * hit.distance, Color.red);
+                float slopeAngle = Vector2.Angle(hit.normal, normalVector);
+                if (i == 0 && slopeAngle <= maxClimbAngle)
+                {
+                    ClimbSlope(ref slopeVelocity, slopeAngle);
+                    Debug.Log(slopeAngle);
+                }
                 hits++;
                 if (hit.distance == 0) continue;
                 float hitDist = hit.distance - RAYCAST_INLET;
                 if (hitDist < closestDelta) closestDelta = hitDist;
+            }
+            else
+            {
+                if (DEBUG) Debug.DrawRay(origin, normDir * castDist, Color.green);
             }
         }
 
@@ -185,6 +200,7 @@ public class EntityController : MonoBehaviour
 
     private int RaycastY(Vector2 normDir, float rawVelocity, ref Vector2 finalVel)
     {
+        bool DEBUG = true;
         // If we aren't moving, save computation cycles by not doing anything.
         if ((normDir * rawVelocity) == Vector2.zero) return 0;
         // If the distance to cast is negative, turn it positive. Also compensate for RAYCAST_INLET.
@@ -198,14 +214,18 @@ public class EntityController : MonoBehaviour
             Vector2 origin = (Vector2)formObject.transform.position + new Vector2(relativeBasePoints[i].x, relativeBasePoints[i].y * normDir.y);
             RaycastHit2D hit = Physics2D.Raycast(origin, normDir, castDist, LayerInfo.OBSTACLES);
 
-            //Debug.DrawRay(origin, normDir * castDist, Color.red);
             // If the raycast hit a collider: Find the point of contact.
             if (hit)
             {
+                if (DEBUG) Debug.DrawRay(origin, normDir * hit.distance, Color.red);
                 hits++;
                 if (hit.distance == 0) continue;
                 float hitDist = hit.distance - RAYCAST_INLET;
                 if (hitDist < closestDelta) closestDelta = hitDist;
+            }
+            else
+            {
+                if (DEBUG) Debug.DrawRay(origin, normDir * castDist, Color.green);
             }
         }
 
@@ -224,6 +244,12 @@ public class EntityController : MonoBehaviour
         // Return the Vector2 for movement along the Y axis of the entity.
         finalVel = closestDelta * normDir;
         return hits;
+    }
+
+    private void ClimbSlope(ref Vector2 slopeVelocity, float slopeAngle)
+    {
+        //float moveDist = Mathf.Abs();
+
     }
 
     /*
@@ -293,6 +319,21 @@ public class EntityController : MonoBehaviour
         float gravSpeed = (en.subAirTime * en.gravityCoeff);
         bool uncapped = en.maxGravitySpeed < 0 ? true : false;
         return dir * (uncapped ? gravSpeed : (gravSpeed > en.maxGravitySpeed ? en.maxGravitySpeed : gravSpeed));
+    }
+
+    /*
+     * Change the Entity's normal vector. Rotate the entity appropriately, and recalculate what is "right."
+     */
+    public void ChangeNormalVector(Vector2 newNorm)
+    {
+        if (newNorm == Vector2.zero) {
+            Debug.LogError("Attempted to set " + entityName + "'s normal vector to " + newNorm.ToString());
+            return;
+        }
+        Vector2 normedNorm = newNorm.normalized;
+        normalVector = normedNorm;
+        rightVector = Vector2.Perpendicular(normalVector * -1f);
+        gameObject.transform.rotation = Quaternion.Euler(0f, 0f, Vector2.Angle(Vector2.up, normedNorm));
     }
 
     /*================================================================================

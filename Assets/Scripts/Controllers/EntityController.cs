@@ -124,8 +124,11 @@ public class EntityController : MonoBehaviour
 
         Vector2 castLen = currentVelocity * Time.deltaTime;
 
-        Vector2 moveX = RaycastX(Vector2.right * Mathf.Sign(castLen.x), Mathf.Abs(castLen.x));
-        Vector2 moveY = RaycastY(Vector2.up * Mathf.Sign(castLen.y), Mathf.Abs(castLen.y));
+        // Perpendicular of inverse of the normal points in the positive X direction, or (1, 0) on unit circle.
+        Vector2 moveX = RaycastX(Vector2.Perpendicular(normalVector * -1f) * Mathf.Sign(currentVelocity.x), Mathf.Abs(castLen.x));
+
+        // Normal Vector points up
+        Vector2 moveY = RaycastY(normalVector * Mathf.Sign(currentVelocity.y), Mathf.Abs(castLen.y));
 
         //rb.MovePosition((Vector2)transform.position + toMove);
         transform.Translate(moveX + moveY);
@@ -151,13 +154,14 @@ public class EntityController : MonoBehaviour
         // If we aren't moving, save computation cycles by not doing anything.
         if ((normDir * len) == Vector2.zero) return Vector2.zero;
         // If the distance to cast is negative, turn it positive. Also compensate for RAYCAST_INLET.
-        float castDist = ((len < 0f) ? Mathf.Abs(len) : len) + RAYCAST_INLET;
-        if (castDist <= RAYCAST_INLET) castDist = 2 *RAYCAST_INLET;
+        //float castDist = ((len < 0f) ? Mathf.Abs(len) : len) + RAYCAST_INLET;
+        float castDist = len + RAYCAST_INLET;
+        if (castDist <= RAYCAST_INLET) castDist = 2 * RAYCAST_INLET;
 
         float closestDelta = len;
         for (int i = 0; i < rayPrecisionHeight; i++)
         {
-            Vector2 origin = (Vector2)formBounds.center + new Vector2(relativeHeightPoints[i].x * directionMultiplier, relativeHeightPoints[i].y);
+            Vector2 origin = (Vector2)formBounds.center + new Vector2(relativeHeightPoints[i].x * normDir.x, relativeHeightPoints[i].y);
             RaycastHit2D hit = Physics2D.Raycast(origin, normDir, castDist, LayerInfo.TERRAIN);
 
             Debug.DrawRay(origin, Vector2.right * directionMultiplier * castDist, Color.red);
@@ -170,16 +174,8 @@ public class EntityController : MonoBehaviour
                 if (hitDist < closestDelta) closestDelta = hitDist;
                 //castDist = hit.distance;
             }
-            // If the raycast did not hit a collider: Find the point in empty space.
-            //else Debug.DrawRay(origin, (normDir * castDist), Color.green);
-             //+ (normDir * RAYCAST_INLET * directionMultiplier)
-            //float delta = (endPoint - origin).magnitude - RAYCAST_INLET;
-            // After getting the endpoint either of contact or in empty space, 
         }
-
-        // Whichever point was closest, translate the entity to that point.
-        //Debug.Log("X Move from: " + ((Vector2)transform.position).ToString() + ", to: " + ((Vector2)transform.position + (normDir * closestDelta)));
-        //transform.Translate(castDist * directionMultiplier, 0, 0);
+        // Return the Vector2 for movement along the X axis of the entity.
         return closestDelta * normDir;
     }
 

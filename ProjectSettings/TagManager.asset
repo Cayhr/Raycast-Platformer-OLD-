@@ -7,8 +7,8 @@ TagManager:
   - Lights
   - Enemy
   - Hitbox
-  - Terrain
   - Projectile
+  - Obstacle
   layers:
   - Default
   - TransparentFX
@@ -19,7 +19,7 @@ TagManager:
   - 
   - 
   - Entities
-  - Terrain
+  - Obstacles
   - Effectors
   - Hitboxes
   - Interactables

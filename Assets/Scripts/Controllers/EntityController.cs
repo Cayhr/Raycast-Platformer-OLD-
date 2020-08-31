@@ -7,6 +7,7 @@ public delegate void StateBasedAction();
 public enum FactionList { NEUTRAL, PLAYER, ENEMIES};
 public enum EntityMotionState { GROUNDED, AIR, CLUTCH };
 
+[RequireComponent(typeof(BoxCollider2D))]
 public class EntityController : MonoBehaviour
 {
     private Rigidbody2D rb;
@@ -50,7 +51,6 @@ public class EntityController : MonoBehaviour
     private Bounds formBounds;
     private Vector2[] relativeBasePoints;
     private Vector2[] relativeHeightPoints;
-    float directionMultiplier;
 
     private void Start()
     {
@@ -95,20 +95,14 @@ public class EntityController : MonoBehaviour
 
     public void Update()
     {
-        // Raycast up and down to check for floors.
-        //RaycastHit2D floorCheck = Physics2D.CircleCast((Vector2)transform.position + mainCollider.offset, mainCollider.radius, normalVector * -1f, 0.05f, LayerInfo.TERRAIN);
-        //RaycastHit2D ceilingCheck = Physics2D.CircleCast((Vector2)transform.position + headCollider.offset, 0.49f, Vector2.up, 0.05f, terrainLayer);
-
         if (directionalInfluence.x > 0) facingRight = true;
         else if (directionalInfluence.x < 0) facingRight = false;
-        directionMultiplier = facingRight ? 1f : -1f;
 
         // First calculate the final velocity of the entity.
         currentVelocity = CompoundVelocities(vOverride, vAdd, vMult);
 
         // Do our Raycast Movement logic.
         RaycastMovement();
-
 
         DecayExternalVelocity();
     }
@@ -124,13 +118,10 @@ public class EntityController : MonoBehaviour
         // Normal Vector points "up".
         Vector2 moveY = Vector2.zero;
         int yHits = RaycastY(normalVector * Mathf.Sign(currentVelocity.y), scaledVelocity.y, ref moveY);
-        if (yHits > 0)
+
+        if (!gameObject.CompareTag("Player"))
         {
-            if (scaledVelocity.y < 0f)
-            {
-                state = EntityMotionState.GROUNDED;
-                OnLanding();
-            }
+            Debug.Log(formBounds.center);
         }
 
         // We use Translate because Rigidbody2D.MovePosition() creates weird jittering situations. Translate is more precise!
@@ -141,14 +132,16 @@ public class EntityController : MonoBehaviour
 
         // If we are on the ground, we should check if we are still on it.
         // Slap the results of the ground checks in moveY, even though we don't use it anymore.
-        int groundChecks = (state == EntityMotionState.GROUNDED) ? RaycastY(normalVector * -1f, RAYCAST_INLET, ref moveY) : 0;
+        int groundChecks = (state == EntityMotionState.GROUNDED) ? RaycastY(normalVector * -1f, RAYCAST_INLET * 2, ref moveY) : 0;
 
-        // If there is ground below us.
+        // If there is no ground below us.
         if (groundChecks == 0) WhileInAir();
     }
 
     /*
      * RaycastX: Calculate the movement vector we need to travel along the relative X axis.
+     * Along the subdivided points of the height faces of the BoxCollider2D in the direction of movement,
+     *  raycast in those directions and detect collisions. Translate the entity appropriately.
      */
     private int RaycastX(Vector2 normDir, float rawVelocity, ref Vector2 finalVel)
     {
@@ -162,24 +155,32 @@ public class EntityController : MonoBehaviour
         int hits = 0;
         for (int i = 0; i < rayPrecisionHeight; i++)
         {
-            Vector2 origin = (Vector2)formBounds.center + new Vector2(relativeHeightPoints[i].x * normDir.x, relativeHeightPoints[i].y);
-            RaycastHit2D hit = Physics2D.Raycast(origin, normDir, castDist, LayerInfo.TERRAIN);
+            Vector2 origin = (Vector2)formObject.transform.position + new Vector2(relativeHeightPoints[i].x * normDir.x, relativeHeightPoints[i].y);
+            RaycastHit2D hit = Physics2D.Raycast(origin, normDir, castDist, LayerInfo.OBSTACLES);
 
             Debug.DrawRay(origin, normDir * castDist, Color.red);
             // If the raycast hit a collider: Find the point of contact.
             if (hit)
             {
                 hits++;
+                externalVelocity.x = 0f;
                 if (hit.distance == 0) continue;
                 float hitDist = hit.distance - RAYCAST_INLET;
                 if (hitDist < closestDelta) closestDelta = hitDist;
             }
         }
+
         // Return the Vector2 for movement along the X axis of the entity.
         finalVel = closestDelta * normDir;
         return hits;
     }
 
+    /*
+     * RaycastY: Calculate the movement vector we need to travel along the relative Y axis.
+     * Along the subdivided points of the base faces of the BoxCollider2D in the direction of movement,
+     *  raycast in those directions and detect collisions. Translate the entity appropriately.
+     * If we have negative velocity and we hit ground, we landed (taken care of in Update).
+     */
     private int RaycastY(Vector2 normDir, float rawVelocity, ref Vector2 finalVel)
     {
         // If we aren't moving, save computation cycles by not doing anything.
@@ -192,20 +193,28 @@ public class EntityController : MonoBehaviour
         int hits = 0;
         for (int i = 0; i < rayPrecisionBase; i++)
         {
-            Vector2 origin = (Vector2)formBounds.center + new Vector2(relativeBasePoints[i].x, relativeBasePoints[i].y * normDir.y);
-            RaycastHit2D hit = Physics2D.Raycast(origin, normDir, castDist, LayerInfo.TERRAIN);
+            Vector2 origin = (Vector2)formObject.transform.position + new Vector2(relativeBasePoints[i].x, relativeBasePoints[i].y * normDir.y);
+            RaycastHit2D hit = Physics2D.Raycast(origin, normDir, castDist, LayerInfo.OBSTACLES);
 
             Debug.DrawRay(origin, normDir * castDist, Color.red);
             // If the raycast hit a collider: Find the point of contact.
             if (hit)
             {
-                // If we are descending and we hit a collider, that means we landed on something.
                 hits++;
+                externalVelocity.y = 0f;
                 if (hit.distance == 0) continue;
                 float hitDist = hit.distance - RAYCAST_INLET;
                 if (hitDist < closestDelta) closestDelta = hitDist;
             }
         }
+
+        // If we have 1 or more hits while descending, we landed on ground.
+        if (hits > 0 && rawVelocity < 0f)
+        {
+            state = EntityMotionState.GROUNDED;
+            OnLanding();
+        }
+
         // Return the Vector2 for movement along the Y axis of the entity.
         finalVel = closestDelta * normDir;
         return hits;
@@ -250,14 +259,10 @@ public class EntityController : MonoBehaviour
         float subLengthHeight = adjustedLengthHeight / (rayPrecisionHeight - 1);
 
         for (int i = 0; i < rayPrecisionBase; i++)
-        {
             relativeBasePoints[i] = new Vector2((subLengthBase * i) - formBounds.extents.x, formBounds.extents.y);
-        }
 
         for (int i = 0; i < rayPrecisionHeight; i++)
-        {
             relativeHeightPoints[i] = new Vector2(formBounds.extents.x, (subLengthHeight * i) - formBounds.extents.y);
-        }
     }
 
     private Vector2 CompoundVelocities(VelocityCompoundMethod over, VelocityCompoundMethod add, VelocityCompoundMethod mult)
@@ -338,14 +343,31 @@ public class EntityController : MonoBehaviour
     }
 
     /*
-     * Smoothly 
+     * Smoothly and gradually decay externalVelocity towards (0f, 0f).
+     * Immediately set x or y to 0f if it is under the dampeningCutoff parameter.
+     * This is done to obtain exactly 0f externalVelocity without having residual 1E-7 values.
+     * Without dampeningCutoff, we get jittering effects when entities have externalVelocity.
+     * This is called once per frame in an Entity's Update().
      */
     private void DecayExternalVelocity()
     {
         externalVelocity = Vector2.Lerp(externalVelocity, Vector2.zero, inertialDampening);
         //externalVelocity = Vector2.SmoothDamp(externalVelocity, Vector2.zero, ref externalVelocity, inertialDampening);
-        if (Mathf.Abs(externalVelocity.y) < dampeningCutoff) externalVelocity.y = 0f;
+
+        //externalVelocity += new Vector2(
+        //    externalVelocity.x - (inertialDampening * Time.deltaTime * Mathf.Sign(externalVelocity.x)),
+        //    externalVelocity.y - (inertialDampening * Time.deltaTime * Mathf.Sign(externalVelocity.y))
+        //);
+
+
         if (Mathf.Abs(externalVelocity.x) < dampeningCutoff) externalVelocity.x = 0f;
+        //else
+        //    if (Mathf.Abs(externalVelocity.x) - inertialDampening < 0f) externalVelocity.x = 0f;
+
+        if (Mathf.Abs(externalVelocity.y) < dampeningCutoff) externalVelocity.y = 0f;
+        //else
+        //    if (Mathf.Abs(externalVelocity.y) - inertialDampening < 0f) externalVelocity.y = 0f;
+
     }
 
     private void OnTriggerEnter2D(Collider2D collision)

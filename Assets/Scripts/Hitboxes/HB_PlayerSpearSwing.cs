@@ -11,6 +11,7 @@ public class HB_PlayerSpearSwing : HitboxFramework
 
     public override void OnHit(EntityController en)
     {
-        en.ApplyVelocity(Vector3.right * 25f);
+        // Apply knockback.
+        en.ApplyVelocity(_EC.directionalInfluence * 5f);
     }
 }

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 public delegate Vector2 VelocityCompoundMethod();
-public delegate void StateChangeAction();
+public delegate void StateBasedAction();
 public enum FactionList { NEUTRAL, PLAYER, ENEMIES};
 public enum EntityMotionState { GROUNDED, AIR, CLUTCH };
 
@@ -14,7 +14,7 @@ public class EntityController : MonoBehaviour
     //public CircleCollider2D mainCollider;
     //public BoxCollider2D headCollider;
     private VelocityCompoundMethod vOverride, vAdd, vMult;
-    private StateChangeAction eOnLanding;
+    private StateBasedAction sbaOnLanding, sbaWhileInAir;
 
     [Header("References")]
     // The forms this Entity can take. At a minimum, are a GameObject with sprite and collider.
@@ -38,7 +38,7 @@ public class EntityController : MonoBehaviour
     [Header("Physics Parameters")]
     public Vector2 normalVector;
     public bool gravityOn;
-    public float gravityCoeff, maxGravitySpeed, inertialDampening;
+    public float gravityCoeff, maxGravitySpeed, inertialDampening, dampeningCutoff;
     [SerializeField] int rayPrecisionBase, rayPrecisionHeight;    // The amount of extra points BETWEEN the 2 on the edges.
 
     [Header("Runtime Trackers")]
@@ -87,9 +87,10 @@ public class EntityController : MonoBehaviour
         vMult = mult;
     }
 
-    public void SetEventFunctions(StateChangeAction landing)
+    public void SetEventFunctions(StateBasedAction landing, StateBasedAction inAir)
     {
-        eOnLanding = landing;
+        sbaOnLanding = landing;
+        sbaWhileInAir = inAir;
     }
 
     public void Update()
@@ -109,7 +110,7 @@ public class EntityController : MonoBehaviour
         RaycastMovement();
 
 
-        DecayExternalVelocity(inertialDampening);
+        DecayExternalVelocity();
     }
 
     private void RaycastMovement()
@@ -118,11 +119,19 @@ public class EntityController : MonoBehaviour
 
         // Perpendicular of inverse of the normal points in the positive X direction, or (1, 0) on unit circle.
         Vector2 moveX = Vector2.zero;
-        int xHits = RaycastX(Vector2.Perpendicular(normalVector * -1f) * Mathf.Sign(currentVelocity.x), Mathf.Abs(scaledVelocity.x), ref moveX);
+        int xHits = RaycastX(Vector2.Perpendicular(normalVector * -1f) * Mathf.Sign(currentVelocity.x), scaledVelocity.x, ref moveX);
 
         // Normal Vector points "up".
         Vector2 moveY = Vector2.zero;
-        int yHits = RaycastY(normalVector * Mathf.Sign(currentVelocity.y), Mathf.Abs(scaledVelocity.y), ref moveY);
+        int yHits = RaycastY(normalVector * Mathf.Sign(currentVelocity.y), scaledVelocity.y, ref moveY);
+        if (yHits > 0)
+        {
+            if (scaledVelocity.y < 0f)
+            {
+                state = EntityMotionState.GROUNDED;
+                OnLanding();
+            }
+        }
 
         // We use Translate because Rigidbody2D.MovePosition() creates weird jittering situations. Translate is more precise!
         transform.Translate(moveX + moveY);
@@ -130,40 +139,26 @@ public class EntityController : MonoBehaviour
         // Sync after every transform translation.
         Physics2D.SyncTransforms();
 
+        // If we are on the ground, we should check if we are still on it.
         // Slap the results of the ground checks in moveY, even though we don't use it anymore.
-        int groundChecks = RaycastY(normalVector * -1f, RAYCAST_INLET, ref moveY);
+        int groundChecks = (state == EntityMotionState.GROUNDED) ? RaycastY(normalVector * -1f, RAYCAST_INLET, ref moveY) : 0;
 
         // If there is ground below us.
-        if (groundChecks > 0)
-        {
-            // If we just hit the ground coming out from another state, reset jumps and air statistics.
-            if (state != EntityMotionState.GROUNDED) OnLanding();
-        }
-        // If we don't detect any ground below us, go ahead and fall off.
-        else
-        {
-            state = EntityMotionState.AIR;
-          // TODO: One-time "we left the ground" check.
-          // The first frame we leave coyote time, subtract a jump.
-          //state = EntityMotionState.AIR;
-            subAirTime += Time.deltaTime;
-
-          //WhileInAir();
-        }
+        if (groundChecks == 0) WhileInAir();
     }
 
     /*
      * RaycastX: Calculate the movement vector we need to travel along the relative X axis.
      */
-    private int RaycastX(Vector2 normDir, float len, ref Vector2 finalVel)
+    private int RaycastX(Vector2 normDir, float rawVelocity, ref Vector2 finalVel)
     {
         // If we aren't moving, save computation cycles by not doing anything.
-        if ((normDir * len) == Vector2.zero) return 0;
+        if ((normDir * rawVelocity) == Vector2.zero) return 0;
         // If the distance to cast is negative, turn it positive. Also compensate for RAYCAST_INLET.
-        float castDist = len + RAYCAST_INLET;
+        float castDist = Mathf.Abs(rawVelocity) + RAYCAST_INLET;
         if (castDist <= RAYCAST_INLET) castDist = 2 * RAYCAST_INLET;
 
-        float closestDelta = len;
+        float closestDelta = castDist;
         int hits = 0;
         for (int i = 0; i < rayPrecisionHeight; i++)
         {
@@ -176,10 +171,8 @@ public class EntityController : MonoBehaviour
             {
                 hits++;
                 if (hit.distance == 0) continue;
-                //Debug.Log(i + ") From: " + origin + ", to: " + hit.point);
                 float hitDist = hit.distance - RAYCAST_INLET;
                 if (hitDist < closestDelta) closestDelta = hitDist;
-                //castDist = hit.distance;
             }
         }
         // Return the Vector2 for movement along the X axis of the entity.
@@ -187,15 +180,15 @@ public class EntityController : MonoBehaviour
         return hits;
     }
 
-    private int RaycastY(Vector2 normDir, float len, ref Vector2 finalVel)
+    private int RaycastY(Vector2 normDir, float rawVelocity, ref Vector2 finalVel)
     {
         // If we aren't moving, save computation cycles by not doing anything.
-        if ((normDir * len) == Vector2.zero) return 0;
+        if ((normDir * rawVelocity) == Vector2.zero) return 0;
         // If the distance to cast is negative, turn it positive. Also compensate for RAYCAST_INLET.
-        float castDist = len + RAYCAST_INLET;
+        float castDist = Mathf.Abs(rawVelocity) + RAYCAST_INLET;
         if (castDist <= RAYCAST_INLET) castDist = 2 * RAYCAST_INLET;
 
-        float closestDelta = len;
+        float closestDelta = castDist;
         int hits = 0;
         for (int i = 0; i < rayPrecisionBase; i++)
         {
@@ -206,35 +199,17 @@ public class EntityController : MonoBehaviour
             // If the raycast hit a collider: Find the point of contact.
             if (hit)
             {
+                // If we are descending and we hit a collider, that means we landed on something.
                 hits++;
                 if (hit.distance == 0) continue;
-                //Debug.Log(i + ") From: " + origin + ", to: " + hit.point);
                 float hitDist = hit.distance - RAYCAST_INLET;
                 if (hitDist < closestDelta) closestDelta = hitDist;
-                //castDist = hit.distance;
             }
         }
         // Return the Vector2 for movement along the Y axis of the entity.
         finalVel = closestDelta * normDir;
         return hits;
     }
-
-    // CODE GRAVEYARD
-        //rb.velocity = currentVelocity;
-        //rb.MovePosition((Vector2)transform.position + (currentVelocity) * Time.deltaTime);
-        // TODO: Cast the current form's collider into a direction. On hit, set the position of the Entity to the centroid of the collision moment.
-        //rb.MovePosition((Vector2)transform.position + new Vector2(Time.fixedDeltaTime, 0f));
-
-            //if (cast.centroid != null)
-            //{
-            //    Debug.Log(gameObject + " is casted to hit " + cast.collider.gameObject + ", at point " + cast.centroid);
-            //    rb.MovePosition(cast.centroid);
-            //}
-            //if (cast.collider == null)
-            //{
-            //    state = EntityMotionState.AIR;
-            //    subAirTime += Time.fixedDeltaTime;
-            //}
 
     /*
      * Upon changing forms, a lot of hitbox information needs to change.
@@ -309,12 +284,27 @@ public class EntityController : MonoBehaviour
         return dir * (uncapped ? gravSpeed : (gravSpeed > en.maxGravitySpeed ? en.maxGravitySpeed : gravSpeed));
     }
 
+    /*================================================================================
+     STATE BASED ACTION GENERALIZATION FUNCTIONS
+     ================================================================================*/
+
     private void OnLanding()
     {
         state = EntityMotionState.GROUNDED;
-        eOnLanding?.Invoke();
+        sbaOnLanding?.Invoke();
         ResetAirTime();
     }
+
+    private void WhileInAir()
+    {
+        state = EntityMotionState.AIR;
+        subAirTime += Time.deltaTime;
+        sbaWhileInAir?.Invoke();
+    }
+
+    /*================================================================================
+     UTILITY FUNCTIONS
+     ================================================================================*/
 
     public void TallyAirTime()
     {
@@ -350,9 +340,12 @@ public class EntityController : MonoBehaviour
     /*
      * Smoothly 
      */
-    private void DecayExternalVelocity(float rate)
+    private void DecayExternalVelocity()
     {
-        externalVelocity = Vector2.Lerp(externalVelocity, Vector2.zero, rate);
+        externalVelocity = Vector2.Lerp(externalVelocity, Vector2.zero, inertialDampening);
+        //externalVelocity = Vector2.SmoothDamp(externalVelocity, Vector2.zero, ref externalVelocity, inertialDampening);
+        if (Mathf.Abs(externalVelocity.y) < dampeningCutoff) externalVelocity.y = 0f;
+        if (Mathf.Abs(externalVelocity.x) < dampeningCutoff) externalVelocity.x = 0f;
     }
 
     private void OnTriggerEnter2D(Collider2D collision)

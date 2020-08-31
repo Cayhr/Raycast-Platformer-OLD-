@@ -89,7 +89,7 @@ public class PlayerController : MonoBehaviour
     void Start()
     {
         _EC.SetVelocityFunctions(OverrideVelocities, CompoundVelocities, MultiplyVelocities);
-        _EC.SetEventFunctions(OnLanding);
+        _EC.SetEventFunctions(OnLanding, WhileInAir);
         jumps = maxJumps;
         dashAction = gameObject.AddComponent<ActionTimer>();
         dashAction.Init(null, EndDash, dashTime, dashCooldown, 0f);
@@ -178,7 +178,7 @@ public class PlayerController : MonoBehaviour
         if (isJumping)
         {
             isJumping = false;
-            _EC.ApplyVelocity(Vector2.up, 2f);
+            _EC.ApplyVelocity(_EC.normalVector, 2f);
             _EC.TallyAirTime();
         }
     }

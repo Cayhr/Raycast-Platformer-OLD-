@@ -98,23 +98,6 @@ public class EntityController : MonoBehaviour
         //RaycastHit2D floorCheck = Physics2D.CircleCast((Vector2)transform.position + mainCollider.offset, mainCollider.radius, normalVector * -1f, 0.05f, LayerInfo.TERRAIN);
         //RaycastHit2D ceilingCheck = Physics2D.CircleCast((Vector2)transform.position + headCollider.offset, 0.49f, Vector2.up, 0.05f, terrainLayer);
 
-        // If there is ground below us.
-        //if (floorCheck.collider != null)
-        //if (true)
-        //{
-        //    // If we just hit the ground coming out from another state, reset jumps and air statistics.
-        //    if (state != EntityMotionState.GROUNDED) OnLanding();
-        //}
-        // If we don't detect any ground below us, go ahead and fall off.
-        //else
-        //{
-            // TODO: One-time "we left the ground" check.
-            // The first frame we leave coyote time, subtract a jump.
-            //state = EntityMotionState.AIR;
-            //subAirTime += Time.deltaTime;
-
-            //WhileInAir();
-        //}
         if (directionalInfluence.x > 0) facingRight = true;
         else if (directionalInfluence.x < 0) facingRight = false;
         directionMultiplier = facingRight ? 1f : -1f;
@@ -122,52 +105,76 @@ public class EntityController : MonoBehaviour
         // First calculate the final velocity of the entity.
         currentVelocity = CompoundVelocities(vOverride, vAdd, vMult);
 
-        Vector2 castLen = currentVelocity * Time.deltaTime;
+        // Do our Raycast Movement logic.
+        RaycastMovement();
 
-        // Perpendicular of inverse of the normal points in the positive X direction, or (1, 0) on unit circle.
-        Vector2 moveX = RaycastX(Vector2.Perpendicular(normalVector * -1f) * Mathf.Sign(currentVelocity.x), Mathf.Abs(castLen.x));
 
-        // Normal Vector points up
-        Vector2 moveY = RaycastY(normalVector * Mathf.Sign(currentVelocity.y), Mathf.Abs(castLen.y));
-
-        //rb.MovePosition((Vector2)transform.position + toMove);
-        transform.Translate(moveX + moveY);
-        Physics2D.SyncTransforms();
-
-        // Check for ground.
-        if (state == EntityMotionState.GROUNDED)
-        {
-
-        }
         DecayExternalVelocity(inertialDampening);
     }
 
-    public void FixedUpdate()
+    private void RaycastMovement()
     {
+        Vector2 scaledVelocity = currentVelocity * Time.deltaTime;
+
+        // Perpendicular of inverse of the normal points in the positive X direction, or (1, 0) on unit circle.
+        Vector2 moveX = Vector2.zero;
+        int xHits = RaycastX(Vector2.Perpendicular(normalVector * -1f) * Mathf.Sign(currentVelocity.x), Mathf.Abs(scaledVelocity.x), ref moveX);
+
+        // Normal Vector points "up".
+        Vector2 moveY = Vector2.zero;
+        int yHits = RaycastY(normalVector * Mathf.Sign(currentVelocity.y), Mathf.Abs(scaledVelocity.y), ref moveY);
+
+        // We use Translate because Rigidbody2D.MovePosition() creates weird jittering situations. Translate is more precise!
+        transform.Translate(moveX + moveY);
+
+        // Sync after every transform translation.
+        Physics2D.SyncTransforms();
+
+        // Slap the results of the ground checks in moveY, even though we don't use it anymore.
+        int groundChecks = RaycastY(normalVector * -1f, RAYCAST_INLET, ref moveY);
+
+        // If there is ground below us.
+        if (groundChecks > 0)
+        {
+            // If we just hit the ground coming out from another state, reset jumps and air statistics.
+            if (state != EntityMotionState.GROUNDED) OnLanding();
+        }
+        // If we don't detect any ground below us, go ahead and fall off.
+        else
+        {
+            state = EntityMotionState.AIR;
+          // TODO: One-time "we left the ground" check.
+          // The first frame we leave coyote time, subtract a jump.
+          //state = EntityMotionState.AIR;
+            subAirTime += Time.deltaTime;
+
+          //WhileInAir();
+        }
     }
 
     /*
-     * Cast Distance will always be a positive number.
+     * RaycastX: Calculate the movement vector we need to travel along the relative X axis.
      */
-    private Vector2 RaycastX(Vector2 normDir, float len)
+    private int RaycastX(Vector2 normDir, float len, ref Vector2 finalVel)
     {
         // If we aren't moving, save computation cycles by not doing anything.
-        if ((normDir * len) == Vector2.zero) return Vector2.zero;
+        if ((normDir * len) == Vector2.zero) return 0;
         // If the distance to cast is negative, turn it positive. Also compensate for RAYCAST_INLET.
-        //float castDist = ((len < 0f) ? Mathf.Abs(len) : len) + RAYCAST_INLET;
         float castDist = len + RAYCAST_INLET;
         if (castDist <= RAYCAST_INLET) castDist = 2 * RAYCAST_INLET;
 
         float closestDelta = len;
+        int hits = 0;
         for (int i = 0; i < rayPrecisionHeight; i++)
         {
             Vector2 origin = (Vector2)formBounds.center + new Vector2(relativeHeightPoints[i].x * normDir.x, relativeHeightPoints[i].y);
             RaycastHit2D hit = Physics2D.Raycast(origin, normDir, castDist, LayerInfo.TERRAIN);
 
-            Debug.DrawRay(origin, Vector2.right * directionMultiplier * castDist, Color.red);
+            Debug.DrawRay(origin, normDir * castDist, Color.red);
             // If the raycast hit a collider: Find the point of contact.
             if (hit)
             {
+                hits++;
                 if (hit.distance == 0) continue;
                 //Debug.Log(i + ") From: " + origin + ", to: " + hit.point);
                 float hitDist = hit.distance - RAYCAST_INLET;
@@ -176,13 +183,40 @@ public class EntityController : MonoBehaviour
             }
         }
         // Return the Vector2 for movement along the X axis of the entity.
-        return closestDelta * normDir;
+        finalVel = closestDelta * normDir;
+        return hits;
     }
 
-    private Vector2 RaycastY(Vector2 normDir, float len)
+    private int RaycastY(Vector2 normDir, float len, ref Vector2 finalVel)
     {
-        if (normDir == Vector2.zero) return Vector2.zero;
-        return Vector2.zero;
+        // If we aren't moving, save computation cycles by not doing anything.
+        if ((normDir * len) == Vector2.zero) return 0;
+        // If the distance to cast is negative, turn it positive. Also compensate for RAYCAST_INLET.
+        float castDist = len + RAYCAST_INLET;
+        if (castDist <= RAYCAST_INLET) castDist = 2 * RAYCAST_INLET;
+
+        float closestDelta = len;
+        int hits = 0;
+        for (int i = 0; i < rayPrecisionBase; i++)
+        {
+            Vector2 origin = (Vector2)formBounds.center + new Vector2(relativeBasePoints[i].x, relativeBasePoints[i].y * normDir.y);
+            RaycastHit2D hit = Physics2D.Raycast(origin, normDir, castDist, LayerInfo.TERRAIN);
+
+            Debug.DrawRay(origin, normDir * castDist, Color.red);
+            // If the raycast hit a collider: Find the point of contact.
+            if (hit)
+            {
+                hits++;
+                if (hit.distance == 0) continue;
+                //Debug.Log(i + ") From: " + origin + ", to: " + hit.point);
+                float hitDist = hit.distance - RAYCAST_INLET;
+                if (hitDist < closestDelta) closestDelta = hitDist;
+                //castDist = hit.distance;
+            }
+        }
+        // Return the Vector2 for movement along the Y axis of the entity.
+        finalVel = closestDelta * normDir;
+        return hits;
     }
 
     // CODE GRAVEYARD

@@ -34,6 +34,7 @@ public class EntityController : MonoBehaviour
     public EntityMotionState state;
     public Vector2 currentVelocity = Vector2.zero;
     public Vector2 externalVelocity = Vector2.zero;
+    public Vector2 inclineVelocity = Vector2.zero;
     public bool facingRight = true;
 
     [Header("Physics Parameters")]
@@ -122,38 +123,21 @@ public class EntityController : MonoBehaviour
     private void RaycastMovement()
     {
         Vector2 scaledVelocity = currentVelocity * Time.deltaTime;
-        Vector2 moveX = Vector2.zero;
-        Vector2 moveY = Vector2.zero;
 
-        // If we are on the ground, we should check if we are still on it.
-        // Slap the results of the ground checks in moveY, even though we don't use it anymore.
-        //int groundChecks = (state == EntityMotionState.GROUNDED) ? RaycastY(normalVector * -1f, RAYCAST_INLET * 2 , ref moveY) : 0;
-
-        // If there is no ground below us.
-        //if (groundChecks == 0) WhileInAir();
-
-        // Perpendicular of inverse of the normal points in the positive X direction, or (1, 0) on unit circle.
-        //int xHits = RaycastX(rightVector * Mathf.Sign(currentVelocity.x), scaledVelocity.x, ref moveX);
-
-        // Normal Vector points "up".
-        //int yHits = RaycastY(normalVector * Mathf.Sign(currentVelocity.y), scaledVelocity.y, ref moveY);
-
-        // We use Translate because Rigidbody2D.MovePosition() creates weird jittering situations. Translate is more precise!
-        Vector2 toMove = Vector2.zero;
-        RaycastVelocity(scaledVelocity, ref toMove);
-        transform.Translate(toMove);
-        //transform.Translate(moveX + moveY);
+        Vector2 forNextFrame = Vector2.zero;
+        RaycastVelocity(scaledVelocity);
+        inclineVelocity = forNextFrame;
 
         // Sync after every transform translation.
         Physics2D.SyncTransforms();
 
     }
 
-    private int RaycastVelocity(Vector2 velocity, ref Vector2 toMove)
+    private void RaycastVelocity(Vector2 velocity)
     {
         bool DEBUG = true;
         // If we aren't moving, save computation cycles by not doing anything.
-        if (velocity == Vector2.zero) return 0;
+        if (velocity == Vector2.zero) return;
 
         // Cache a few variables. NormDir = normalized velocity vector, formCenter = world position of form's center.
         float velocityMag = velocity.magnitude;
@@ -236,6 +220,8 @@ public class EntityController : MonoBehaviour
                 if (DEBUG) Debug.DrawRay(origin, unitDir * castDist, Color.white);
                 continue;
             }
+
+            // If this is a hit we need to keep counting on.
             hits++;
 
             // If the raycast closestHit a collider: Find the point of contact, but skip if we closestHit something further than a previous raycast.
@@ -247,49 +233,96 @@ public class EntityController : MonoBehaviour
             // If we pass the two previous checks, increment our raycast hit counter `hits` and then check if it was the new closestDelta.
             if (hitDist < closestDelta)
             {
+                castDist = hitDist;
                 closestHit = currentHit;
                 closestDelta = hitDist;
             }
         }
 
-        toMove = closestDelta * unitDir;
+        Vector2 toMove = closestDelta * unitDir;
+        if (toMove == Vector2.zero) return;
+        transform.Translate(toMove);
 
         // If after raycasting we did not get any hits, we can just stop.
-        if (hits == 0) return hits;
-        if (closestHit.collider == null) return hits;
-        Debug.Log(closestHit.collider.gameObject);
+        if (hits == 0) return;
+        if (closestHit.collider == null) return;
 
         // If we ended up getting collisions: calculate the angle we hit the surface at.
-        float velocityAngle = Mathf.Atan2(velocity.y, velocity.x) * Mathf.Rad2Deg;
-        float slopeAngle = Vector2.Angle(closestHit.normal, normalVector);
+        float slopeNormal2OurNormal = Vector2.Angle(closestHit.normal, normalVector);
+        float remainingVelocity = velocityMag - closestDelta;
+
+        // Figure out along which direction of the surface should we move along it?
+        Vector2 vectorDiff = (velocity.normalized + closestHit.normal);
         Vector2 unitAlongSurface = (Vector2.Perpendicular(closestHit.normal)).normalized;
-        float surfaceNormToVelocityAngle = Vector2.Angle(unitAlongSurface, unitDir);
+        float angleBetweenVelocityAndNormal = Vector2.SignedAngle(closestHit.normal, velocity);
+        float surfaceNormSide = 0f;
 
-        //Debug.Log("Surface to our Normal: " + surfaceNormAngle + "* | Surface to our Velocity: " + surfaceNormToVelocityAngle + "* | Our velocity angle: " + velocityAngle + "*");
-        //Debug.Log("Vector \"down\" the surface: " + unitAlongSurface);
-        //Debug.Log("Slope angle: " + surfaceNormAngle + "* | Our velocity: " + velocityAngle + "*");
+        // If the velocity and normal vectors are exactly opposite sides, cancel the forces.
+        if (angleBetweenVelocityAndNormal == 180f) surfaceNormSide = 0f;
+        else if (angleBetweenVelocityAndNormal < 0f) surfaceNormSide = -1f;
+        else if (angleBetweenVelocityAndNormal > 0f) surfaceNormSide = 1f;
 
-        // If the angle of the surface we hit is less than our climbing angle (we can stand on it), stop.
-        if (Mathf.Abs(slopeAngle) < maxClimbAngle)
+        // Reflect the unit vector along the surface of contact in the direction we find.
+        unitAlongSurface *= surfaceNormSide;
+
+        Debug.DrawRay(closestHit.point, closestHit.normal, Color.yellow);
+        Debug.DrawRay(closestHit.point, velocity.normalized, Color.blue);
+        Debug.DrawRay(closestHit.point, vectorDiff, Color.green);
+        Debug.Log("Angle between velocity and surface normal: " + angleBetweenVelocityAndNormal);
+        //Debug.Log(vectorDiff);
+        Debug.DrawRay(closestHit.point, unitAlongSurface, Color.magenta);
+        //Debug.Break();
+
+        // Scale against 
+        float angleBetweenVelocityAndSurfaceUnit = Vector2.SignedAngle(unitAlongSurface, velocity);
+
+        // Preserve velocity in that direction.
+        Vector2 extraMovementNeeded = unitAlongSurface * remainingVelocity;
+
+        // If the angle of the surface hit is less than our climbing angle (we can stand on it), enter GroundedState.
+        if (Mathf.Abs(slopeNormal2OurNormal) < maxClimbAngle)
         {
             // If we had negative velocity before colliding with said slope.
             if (velocity.y < 0f)
             {
                 externalVelocity.y = 0f;
-                state = EntityMotionState.GROUNDED;
-                OnLanding();
+                if (state != EntityMotionState.GROUNDED)
+                {
+                    state = EntityMotionState.GROUNDED;
+                    OnLanding();
+                }
             }
-
-            // If we were just moving and we hit a slope we can climb up.
-
+            //If we were just moving and we hit a slope we can climb up.
+        }
+        // If the slope is too great and we cannot climb it.
+        else
+        {
         }
 
-        // Calculate how much of our velocity is stopped based on the angle we hit, for each axis.
-
-        // Preserve velocity in that direction.
+        // If we hit a surface, we need to propagate movement again in that direction.
+        RaycastVelocity(extraMovementNeeded);
 
         // Return the Vector2 for movement along the X axis of the entity.
-        return hits;
+        return;
+    }
+
+    /*
+     * Returns the angle of the Vector2 in *normal* 2D Euclidean space.
+     */
+    private float VectorAngle(Vector2 vec)
+    {
+        return Mathf.Atan2(vec.y, vec.x);
+    }
+
+    /*
+     * Returns a Vector2 rotated counter-clockwise by an angle.
+     * Mathematically, it is simply [2x2 rotation matrix][vec]'.
+     * [x'] = [cos&, -sin&][x]
+     * [y']   [sin&,  cos&][y]
+     */
+    private Vector2 RotateVector(Vector2 vec, float angle)
+    {
+        return new Vector2((vec.x * Mathf.Cos(angle)) - (vec.y * Mathf.Sin(angle)), (vec.x * Mathf.Sin(angle)) + (vec.y * Mathf.Cos(angle)));
     }
 
     /*
@@ -357,6 +390,7 @@ public class EntityController : MonoBehaviour
         if (add != null) final += add();
         if (gravityOn) final += CalculateGravityVector(this);
         final += externalVelocity;
+        if (inclineVelocity != Vector2.zero) final = inclineVelocity * final.magnitude;
         if (mult != null) final.Scale(mult());
 
         return final;
@@ -500,8 +534,8 @@ public class EntityController : MonoBehaviour
             Gizmos.DrawSphere((Vector2)formBounds.center + (relativeBasePoints[i] * -1f), 0.05f);
         }
         */
-        Gizmos.DrawSphere((Vector2)formBounds.min, .05f);
-        Gizmos.DrawSphere((Vector2)formBounds.max, .05f);
+        //Gizmos.DrawSphere((Vector2)formBounds.min, .05f);
+        //Gizmos.DrawSphere((Vector2)formBounds.max, .05f);
     }
 }
 /*

@@ -228,19 +228,17 @@ public class EntityController : MonoBehaviour
             if (DEBUG) Debug.DrawRay(origin, unitDir * currentHit.distance, Color.red);
             float hitDist = currentHit.distance - RAYCAST_INLET;
             if (hitDist > closestDelta) continue;
-            if (currentHit.distance == 0) continue;
+            //if (currentHit.distance == 0) continue;
 
             // If we pass the two previous checks, increment our raycast hit counter `hits` and then check if it was the new closestDelta.
             if (hitDist < closestDelta)
             {
-                castDist = hitDist;
                 closestHit = currentHit;
                 closestDelta = hitDist;
             }
         }
 
         Vector2 toMove = closestDelta * unitDir;
-        if (toMove == Vector2.zero) return;
         transform.Translate(toMove);
 
         // If after raycasting we did not get any hits, we can just stop.
@@ -250,6 +248,8 @@ public class EntityController : MonoBehaviour
         // If we ended up getting collisions: calculate the angle we hit the surface at.
         float slopeNormal2OurNormal = Vector2.Angle(closestHit.normal, normalVector);
         float remainingVelocity = velocityMag - closestDelta;
+        Debug.Log(toMove);
+        if (remainingVelocity <= 0f) return;
 
         // Figure out along which direction of the surface should we move along it?
         Vector2 vectorDiff = (velocity.normalized + closestHit.normal);
@@ -265,16 +265,12 @@ public class EntityController : MonoBehaviour
         // Reflect the unit vector along the surface of contact in the direction we find.
         unitAlongSurface *= surfaceNormSide;
 
-        Debug.DrawRay(closestHit.point, closestHit.normal, Color.yellow);
-        Debug.DrawRay(closestHit.point, velocity.normalized, Color.blue);
-        Debug.DrawRay(closestHit.point, vectorDiff, Color.green);
-        Debug.Log("Angle between velocity and surface normal: " + angleBetweenVelocityAndNormal);
+        Debug.DrawRay(closestHit.point, closestHit.normal, Color.yellow, 1f);
+        Debug.DrawRay(closestHit.point, velocity.normalized, Color.blue, 1f);
+        Debug.DrawRay(closestHit.point, vectorDiff, Color.green, 1f);
+        //Debug.Log("Angle between velocity and surface normal: " + angleBetweenVelocityAndNormal);
         //Debug.Log(vectorDiff);
-        Debug.DrawRay(closestHit.point, unitAlongSurface, Color.magenta);
-        //Debug.Break();
-
-        // Scale against 
-        float angleBetweenVelocityAndSurfaceUnit = Vector2.SignedAngle(unitAlongSurface, velocity);
+        Debug.DrawRay(closestHit.point, unitAlongSurface, Color.magenta, 1f);
 
         // Preserve velocity in that direction.
         Vector2 extraMovementNeeded = unitAlongSurface * remainingVelocity;

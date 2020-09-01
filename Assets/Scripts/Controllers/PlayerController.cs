@@ -134,6 +134,7 @@ public class PlayerController : MonoBehaviour
         if (_EC.state == EntityMotionState.GROUNDED && !dashAction.IsActive()) crouching = _EC.directionalInfluence.y < 0 ? true : false;
 
         // Enable and disable the top half collider for the player when crouching.
+        // TODO: Can optimize to not constantly change form!
         if (crouching) _EC.ChangeForm(1); else _EC.ChangeForm(0);
     }
 
@@ -164,6 +165,7 @@ public class PlayerController : MonoBehaviour
         {
             isJumping = true;
             jumpTimeCounter = jumpTime;
+            _EC.state = EntityMotionState.AIR;
             crouching = false;
             _EC.TallyAirTime();
             jumps--;

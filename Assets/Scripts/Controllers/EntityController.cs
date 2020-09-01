@@ -50,6 +50,13 @@ public class EntityController : MonoBehaviour
 
     // Raycasting Variables
     private Bounds formBounds;
+    const int NUM_CORNERS = 4;
+    const int TL = 0;
+    const int TR = 1;
+    const int BL = 2;
+    const int BR = 3;
+    private Vector2[] relativeCornerPos; //cornerTL, cornerTR, cornerBL, cornerBR;
+    private float baseSpacing, heightSpacing;
     private Vector2[] relativeBasePoints;
     private Vector2[] relativeHeightPoints;
 
@@ -97,8 +104,11 @@ public class EntityController : MonoBehaviour
 
     public void Update()
     {
+        // First check which way we are facing based on DI.
         if (directionalInfluence.x > 0) facingRight = true;
         else if (directionalInfluence.x < 0) facingRight = false;
+
+        if (state == EntityMotionState.AIR) WhileInAir();
 
         // First calculate the final velocity of the entity.
         currentVelocity = CompoundVelocities(vOverride, vAdd, vMult);
@@ -117,139 +127,169 @@ public class EntityController : MonoBehaviour
 
         // If we are on the ground, we should check if we are still on it.
         // Slap the results of the ground checks in moveY, even though we don't use it anymore.
-        int groundChecks = (state == EntityMotionState.GROUNDED) ? RaycastY(normalVector * -1f, RAYCAST_INLET * 2 , ref moveY) : 0;
+        //int groundChecks = (state == EntityMotionState.GROUNDED) ? RaycastY(normalVector * -1f, RAYCAST_INLET * 2 , ref moveY) : 0;
 
         // If there is no ground below us.
-        if (groundChecks == 0) WhileInAir();
+        //if (groundChecks == 0) WhileInAir();
 
         // Perpendicular of inverse of the normal points in the positive X direction, or (1, 0) on unit circle.
-        int xHits = RaycastX(rightVector * Mathf.Sign(currentVelocity.x), scaledVelocity.x, ref moveX);
+        //int xHits = RaycastX(rightVector * Mathf.Sign(currentVelocity.x), scaledVelocity.x, ref moveX);
 
         // Normal Vector points "up".
-        int yHits = RaycastY(normalVector * Mathf.Sign(currentVelocity.y), scaledVelocity.y, ref moveY);
+        //int yHits = RaycastY(normalVector * Mathf.Sign(currentVelocity.y), scaledVelocity.y, ref moveY);
 
         // We use Translate because Rigidbody2D.MovePosition() creates weird jittering situations. Translate is more precise!
-        transform.Translate(moveX + moveY);
+        Vector2 toMove = Vector2.zero;
+        RaycastVelocity(scaledVelocity, ref toMove);
+        transform.Translate(toMove);
+        //transform.Translate(moveX + moveY);
 
         // Sync after every transform translation.
         Physics2D.SyncTransforms();
 
     }
 
-    /*
-     * Along the subdivided points of the height faces of the BoxCollider2D in the direction of movement,
-     *  raycast in those directions and detect collisions. Translate the entity appropriately.
-     * ---------------------------------------------------------------------------------------------------------------------------
-     * RaycastX: Calculate the movement vector we need to travel along the relative X axis.
-     * ---------------------------------------------------------------------------------------------------------------------------
-     * RaycastY: Calculate the movement vector we need to travel along the relative X axis.
-     *  If we have negative velocity and we hit ground, we landed (taken care of in Update).
-     * ---------------------------------------------------------------------------------------------------------------------------
-     * <BUG WORKAROUND>: Within the loop on both X and Y, the Vector2 `origin` uses the formObject's transform position,
-     *  rather than the Bounds component's center.
-     *  The latter was not returning an updated world position for non-player Entities.
-     */
-    private int RaycastX(Vector2 normDir, float rawVelocity, ref Vector2 finalVel)
+    private int RaycastVelocity(Vector2 velocity, ref Vector2 toMove)
     {
         bool DEBUG = true;
         // If we aren't moving, save computation cycles by not doing anything.
-        if ((normDir * rawVelocity) == Vector2.zero) return 0;
+        if (velocity == Vector2.zero) return 0;
+
+        // Cache a few variables. NormDir = normalized velocity vector, formCenter = world position of form's center.
+        float velocityMag = velocity.magnitude;
+        Vector2 unitDir = velocity.normalized;
+        Vector2 formCenter = formObject.transform.position;
+
+        // Calculate the faces that will be raycasted from.
+        // Start with the corners and check for overlap.
+        bool[] cornerCheck = { false, false, false, false };
+        int countedCorners = 0;
+        if (velocity.x > 0f)
+            cornerCheck[TR] = cornerCheck[BR] = true;
+        else if (velocity.x < 0f)
+            cornerCheck[TL] = cornerCheck[BL] = true;
+
+        if (velocity.y > 0f)
+            cornerCheck[TL] = cornerCheck[TR] = true;
+        else if (velocity.y < 0f)
+            cornerCheck[BL] = cornerCheck[BR] = true;
+
+        for (int i = 0; i < NUM_CORNERS; i++)
+            countedCorners += (cornerCheck[i]) ? 1 : 0;
+        int count = countedCorners;
+
+        // Now we add in the points along the faces, excluding the corners.
+        if (velocity.x != 0f) count += (rayPrecisionHeight - 2);
+        if (velocity.y != 0f) count += (rayPrecisionBase - 2);
+
+        // Calculate the points from which to raycast from.
+        Vector2[] points = new Vector2[count];
+
+        // iPoints will be used to iterate through the final array. It will go Corners > X points > Y points.
+        int iPoints = 0;
+
+        // Start with the corners.
+        for (int i = 0; i < NUM_CORNERS; i++)
+            if (cornerCheck[i])
+            {
+                // Idk why but we need to index the relativeCornerPos's backwards to make it align properly.
+                points[iPoints] = formCenter + relativeCornerPos[NUM_CORNERS - 1 - i];
+                iPoints++;
+            }
+
+        // Intermediary X faces;
+        float flipX = Mathf.Sign(velocity.x);
+        if (velocity.x != 0f)
+            for (int i = 0; i < rayPrecisionHeight - 2; i++)
+            {
+                points[iPoints] = formCenter + new Vector2(relativeCornerPos[TL].x * flipX, relativeCornerPos[TL].y + heightSpacing * (i + 1));
+                iPoints++;
+            }
+
+        // Intermediary Y faces;
+        float flipY = Mathf.Sign(velocity.y);
+        if (velocity.y != 0f)
+            for (int i = 0; i < rayPrecisionBase - 2; i++)
+            {
+                points[iPoints] = formCenter + new Vector2(relativeCornerPos[BR].x + (baseSpacing * (i + 1)), relativeCornerPos[BR].y * flipY);
+                iPoints++;
+            }
+
         // If the distance to cast is negative, turn it positive. Also compensate for RAYCAST_INLET.
-        float castDist = Mathf.Abs(rawVelocity) + RAYCAST_INLET;
-        if (castDist <= RAYCAST_INLET) castDist = 2 * RAYCAST_INLET;
+        float castDist = Mathf.Abs(velocity.magnitude) + RAYCAST_INLET;
+        if (castDist <= RAYCAST_INLET) castDist = RAYCAST_INLET + RAYCAST_INLET;
 
         float closestDelta = castDist;
-        Vector2 slopeVelocity = Vector2.zero;
+        // ClosestHit is initialized to an empty RaycastHit2D, but if it ends up being unused we will skip.
+        RaycastHit2D closestHit = new RaycastHit2D();
         int hits = 0;
-        for (int i = 0; i < rayPrecisionHeight; i++)
+
+        // Raycast from every point and get the closest collision information.
+        for (int i = 0; i < count; i++)
         {
-            Vector2 origin = (Vector2)formObject.transform.position + new Vector2(relativeHeightPoints[i].x * normDir.x, relativeHeightPoints[i].y);
-            RaycastHit2D hit = Physics2D.Raycast(origin, normDir, castDist, LayerInfo.OBSTACLES);
+            Vector2 origin = points[i];
+            RaycastHit2D currentHit = Physics2D.Raycast(origin, unitDir, castDist, LayerInfo.OBSTACLES);
 
-            // If the raycast hit a collider: Find the point of contact.
-            if (hit)
+            // If the raycast did not hit a collider: Skip to the next raycast.
+            if (!currentHit)
             {
-                if (DEBUG) Debug.DrawRay(origin, normDir * hit.distance, Color.red);
-                float slopeAngle = Vector2.Angle(hit.normal, normalVector);
-                if (i == 0 && slopeAngle <= maxClimbAngle)
-                {
-                    ClimbSlope(ref slopeVelocity, slopeAngle);
-                    Debug.Log(slopeAngle);
-                }
-                hits++;
-                if (hit.distance == 0) continue;
-                float hitDist = hit.distance - RAYCAST_INLET;
-                if (hitDist < closestDelta) closestDelta = hitDist;
+                if (DEBUG) Debug.DrawRay(origin, unitDir * castDist, Color.white);
+                continue;
             }
-            else
+            hits++;
+
+            // If the raycast closestHit a collider: Find the point of contact, but skip if we closestHit something further than a previous raycast.
+            if (DEBUG) Debug.DrawRay(origin, unitDir * currentHit.distance, Color.red);
+            float hitDist = currentHit.distance - RAYCAST_INLET;
+            if (hitDist > closestDelta) continue;
+            if (currentHit.distance == 0) continue;
+
+            // If we pass the two previous checks, increment our raycast hit counter `hits` and then check if it was the new closestDelta.
+            if (hitDist < closestDelta)
             {
-                if (DEBUG) Debug.DrawRay(origin, normDir * castDist, Color.green);
-            }
-        }
-
-        if (hits > 0)
-        {
-            sbaCollisionX?.Invoke();
-            externalVelocity.x = 0f;
-        }
-
-        // Return the Vector2 for movement along the X axis of the entity.
-        finalVel = closestDelta * normDir;
-        return hits;
-    }
-
-    private int RaycastY(Vector2 normDir, float rawVelocity, ref Vector2 finalVel)
-    {
-        bool DEBUG = true;
-        // If we aren't moving, save computation cycles by not doing anything.
-        if ((normDir * rawVelocity) == Vector2.zero) return 0;
-        // If the distance to cast is negative, turn it positive. Also compensate for RAYCAST_INLET.
-        float castDist = Mathf.Abs(rawVelocity) + RAYCAST_INLET;
-        if (castDist <= RAYCAST_INLET) castDist = 2 * RAYCAST_INLET;
-
-        float closestDelta = castDist;
-        int hits = 0;
-        for (int i = 0; i < rayPrecisionBase; i++)
-        {
-            Vector2 origin = (Vector2)formObject.transform.position + new Vector2(relativeBasePoints[i].x, relativeBasePoints[i].y * normDir.y);
-            RaycastHit2D hit = Physics2D.Raycast(origin, normDir, castDist, LayerInfo.OBSTACLES);
-
-            // If the raycast hit a collider: Find the point of contact.
-            if (hit)
-            {
-                if (DEBUG) Debug.DrawRay(origin, normDir * hit.distance, Color.red);
-                hits++;
-                if (hit.distance == 0) continue;
-                float hitDist = hit.distance - RAYCAST_INLET;
-                if (hitDist < closestDelta) closestDelta = hitDist;
-            }
-            else
-            {
-                if (DEBUG) Debug.DrawRay(origin, normDir * castDist, Color.green);
+                closestHit = currentHit;
+                closestDelta = hitDist;
             }
         }
 
-        // If we have 1 or more hits while descending, we landed on ground.
-        if (hits > 0)
+        toMove = closestDelta * unitDir;
+
+        // If after raycasting we did not get any hits, we can just stop.
+        if (hits == 0) return hits;
+        if (closestHit.collider == null) return hits;
+        Debug.Log(closestHit.collider.gameObject);
+
+        // If we ended up getting collisions: calculate the angle we hit the surface at.
+        float velocityAngle = Mathf.Atan2(velocity.y, velocity.x) * Mathf.Rad2Deg;
+        float slopeAngle = Vector2.Angle(closestHit.normal, normalVector);
+        Vector2 unitAlongSurface = (Vector2.Perpendicular(closestHit.normal)).normalized;
+        float surfaceNormToVelocityAngle = Vector2.Angle(unitAlongSurface, unitDir);
+
+        //Debug.Log("Surface to our Normal: " + surfaceNormAngle + "* | Surface to our Velocity: " + surfaceNormToVelocityAngle + "* | Our velocity angle: " + velocityAngle + "*");
+        //Debug.Log("Vector \"down\" the surface: " + unitAlongSurface);
+        //Debug.Log("Slope angle: " + surfaceNormAngle + "* | Our velocity: " + velocityAngle + "*");
+
+        // If the angle of the surface we hit is less than our climbing angle (we can stand on it), stop.
+        if (Mathf.Abs(slopeAngle) < maxClimbAngle)
         {
-            sbaCollisionY?.Invoke();
-            externalVelocity.y = 0f;
-            if (rawVelocity < 0f)
+            // If we had negative velocity before colliding with said slope.
+            if (velocity.y < 0f)
             {
+                externalVelocity.y = 0f;
                 state = EntityMotionState.GROUNDED;
                 OnLanding();
             }
+
+            // If we were just moving and we hit a slope we can climb up.
+
         }
 
-        // Return the Vector2 for movement along the Y axis of the entity.
-        finalVel = closestDelta * normDir;
+        // Calculate how much of our velocity is stopped based on the angle we hit, for each axis.
+
+        // Preserve velocity in that direction.
+
+        // Return the Vector2 for movement along the X axis of the entity.
         return hits;
-    }
-
-    private void ClimbSlope(ref Vector2 slopeVelocity, float slopeAngle)
-    {
-        //float moveDist = Mathf.Abs();
-
     }
 
     /*
@@ -279,12 +319,24 @@ public class EntityController : MonoBehaviour
         const int MIN_RAYS = 2;
         rayPrecisionBase = Mathf.Clamp(rayPrecisionBase, MIN_RAYS, int.MaxValue);
         rayPrecisionHeight = Mathf.Clamp(rayPrecisionHeight, MIN_RAYS, int.MaxValue);
+        relativeCornerPos = new Vector2[NUM_CORNERS];
         relativeBasePoints = new Vector2[rayPrecisionBase];
         relativeHeightPoints = new Vector2[rayPrecisionHeight];
 
         // Calculate left to right and bottom to top the colinear points for X and Y respectively.
+        // We shrink the form's Bounds by the RAYCAST_INLET.
         formBounds.Expand(RAYCAST_INLET * -2f);
+
+        // Record the relative corners. We only need TopLeft and BottomRight (we can reflect them based on velocity).
         Vector2 boxSize = formBounds.size;
+        relativeCornerPos[BL] = (Vector2)formBounds.center - (Vector2)formBounds.min;
+        relativeCornerPos[BR] = (Vector2)formBounds.center - new Vector2(formBounds.max.x, formBounds.min.y);
+        relativeCornerPos[TL] = (Vector2)formBounds.center - new Vector2(formBounds.min.x, formBounds.max.y);
+        relativeCornerPos[TR] = (Vector2)formBounds.center - (Vector2)formBounds.max;
+
+        baseSpacing = boxSize.x / (rayPrecisionBase - 1);
+        heightSpacing = boxSize.y / (rayPrecisionHeight - 1);
+
         float adjustedLengthBase = boxSize.x;
         float adjustedLengthHeight = boxSize.y;
         float subLengthBase = adjustedLengthBase / (rayPrecisionBase - 1);
@@ -427,10 +479,10 @@ public class EntityController : MonoBehaviour
         en.OnHit(this);
     }
 
-    /*
     private void OnDrawGizmos()
     {
         if (!Application.isPlaying) return;
+        /*
         for (int i = 0; i < rayPrecisionHeight; i++)
         {
             Gizmos.DrawSphere((Vector2)formBounds.center + relativeHeightPoints[i], 0.05f);
@@ -447,6 +499,119 @@ public class EntityController : MonoBehaviour
         {
             Gizmos.DrawSphere((Vector2)formBounds.center + (relativeBasePoints[i] * -1f), 0.05f);
         }
+        */
+        Gizmos.DrawSphere((Vector2)formBounds.min, .05f);
+        Gizmos.DrawSphere((Vector2)formBounds.max, .05f);
     }
-    */
 }
+/*
+    *
+     * Along the subdivided points of the height faces of the BoxCollider2D in the direction of movement,
+     *  raycast in those directions and detect collisions. Translate the entity appropriately.
+     * ---------------------------------------------------------------------------------------------------------------------------
+     * RaycastX: Calculate the movement vector we need to travel along the relative X axis.
+     * ---------------------------------------------------------------------------------------------------------------------------
+     * RaycastY: Calculate the movement vector we need to travel along the relative X axis.
+     *  If we have negative velocity and we hit ground, we landed (taken care of in Update).
+     * ---------------------------------------------------------------------------------------------------------------------------
+     * <BUG WORKAROUND>: Within the loop on both X and Y, the Vector2 `origin` uses the formObject's transform position,
+     *  rather than the Bounds component's center.
+     *  The latter was not returning an updated world position for non-player Entities.
+     *
+    private int RaycastX(Vector2 normDir, float rawVelocity, ref Vector2 finalVel)
+    {
+        bool DEBUG = true;
+        // If we aren't moving, save computation cycles by not doing anything.
+        if ((normDir * rawVelocity) == Vector2.zero) return 0;
+        // If the distance to cast is negative, turn it positive. Also compensate for RAYCAST_INLET.
+        float castDist = Mathf.Abs(rawVelocity) + RAYCAST_INLET;
+        if (castDist <= RAYCAST_INLET) castDist = RAYCAST_INLET;
+
+        float closestDelta = castDist;
+        Vector2 slopeVelocity = Vector2.zero;
+        int hits = 0;
+        for (int i = 0; i < rayPrecisionHeight; i++)
+        {
+            Vector2 origin = (Vector2)formObject.transform.position + new Vector2(relativeHeightPoints[i].x * normDir.x, relativeHeightPoints[i].y);
+            RaycastHit2D hit = Physics2D.Raycast(origin, normDir, castDist, LayerInfo.OBSTACLES);
+
+            // If the raycast hit a collider: Find the point of contact.
+            if (hit)
+            {
+                if (DEBUG) Debug.DrawRay(origin, normDir * hit.distance, Color.red);
+                float slopeAngle = Vector2.Angle(hit.normal, normalVector);
+                if (i == 0 && slopeAngle <= maxClimbAngle)
+                {
+                    ClimbSlope(ref slopeVelocity, slopeAngle);
+                    //Debug.Log(slopeAngle);
+                }
+                hits++;
+                if (hit.distance == 0) continue;
+                float hitDist = hit.distance - RAYCAST_INLET;
+                if (hitDist < closestDelta) closestDelta = hitDist;
+            }
+            else
+            {
+                if (DEBUG) Debug.DrawRay(origin, normDir * castDist, Color.green);
+            }
+        }
+
+        if (hits > 0)
+        {
+            sbaCollisionX?.Invoke();
+            externalVelocity.x = 0f;
+        }
+
+        // Return the Vector2 for movement along the X axis of the entity.
+        finalVel = closestDelta * normDir;
+        return hits;
+    }
+
+    private int RaycastY(Vector2 normDir, float rawVelocity, ref Vector2 finalVel)
+    {
+        bool DEBUG = true;
+        // If we aren't moving, save computation cycles by not doing anything.
+        if ((normDir * rawVelocity) == Vector2.zero) return 0;
+        // If the distance to cast is negative, turn it positive. Also compensate for RAYCAST_INLET.
+        float castDist = Mathf.Abs(rawVelocity) + RAYCAST_INLET;
+        if (castDist <= RAYCAST_INLET) castDist = RAYCAST_INLET;
+
+        float closestDelta = castDist;
+        int hits = 0;
+        for (int i = 0; i < rayPrecisionBase; i++)
+        {
+            Vector2 origin = (Vector2)formObject.transform.position + new Vector2(relativeBasePoints[i].x, relativeBasePoints[i].y * normDir.y);
+            RaycastHit2D hit = Physics2D.Raycast(origin, normDir, castDist, LayerInfo.OBSTACLES);
+
+            // If the raycast hit a collider: Find the point of contact.
+            if (hit)
+            {
+                if (DEBUG) Debug.DrawRay(origin, normDir * hit.distance, Color.red);
+                hits++;
+                if (hit.distance == 0) continue;
+                float hitDist = hit.distance - RAYCAST_INLET;
+                if (hitDist < closestDelta) closestDelta = hitDist;
+            }
+            else
+            {
+                if (DEBUG) Debug.DrawRay(origin, normDir * castDist, Color.green);
+            }
+        }
+
+        // If we have 1 or more hits while descending, we landed on ground.
+        if (hits > 0)
+        {
+            sbaCollisionY?.Invoke();
+            externalVelocity.y = 0f;
+            if (rawVelocity < 0f)
+            {
+                state = EntityMotionState.GROUNDED;
+                OnLanding();
+            }
+        }
+
+        // Return the Vector2 for movement along the Y axis of the entity.
+        finalVel = closestDelta * normDir;
+        return hits;
+    }
+*/

@@ -274,13 +274,13 @@ public class EntityController : MonoBehaviour
         // Reflect the unit vector along the surface of contact in the direction we find.
         unitAlongSurface *= surfaceNormSide;
 
-        //Debug.DrawRay(closestHit.point, closestHit.normal, Color.yellow, 1f);
-        //Debug.DrawRay(closestHit.point, velocity.normalized, Color.blue, 1f);
-        //Debug.DrawRay(closestHit.point, deflectionVector, Color.green, 1f);
-        //Debug.Log("Angle between velocity and surface normal: " + angleBetweenVelocityAndNormal);
-        //Debug.Log(vectorDiff);
-        //Debug.DrawRay(closestHit.point, unitAlongSurface, Color.magenta, 1f);
-        //Debug.Log("Velocity) " + Mathf.Sin(velocity.x) + ", " + Mathf.Sin(velocity.y));
+                    //Debug.DrawRay(closestHit.point, closestHit.normal, Color.yellow, 1f);
+                    //Debug.DrawRay(closestHit.point, velocity.normalized, Color.blue, 1f);
+                    //Debug.DrawRay(closestHit.point, deflectionVector, Color.green, 1f);
+                    //Debug.Log("Angle between velocity and surface normal: " + angleBetweenVelocityAndNormal);
+                    //Debug.Log(vectorDiff);
+                    //Debug.DrawRay(closestHit.point, unitAlongSurface, Color.magenta, 1f);
+                    //Debug.Log("Velocity) " + Mathf.Sin(velocity.x) + ", " + Mathf.Sin(velocity.y));
 
         // Calculate the vector projection of the velocity vector onto the unit vector along the surface.
         // VDotS = Dot product between <velocity vector> and <unit vector along surface>.
@@ -293,9 +293,10 @@ public class EntityController : MonoBehaviour
 
         // Vector projection formula.
         Vector2 pVonS = (VDotS != 0f) ? (VDotS) * unitAlongSurface : Vector2.zero;
-        //Debug.DrawRay(closestHit.point, pVonS, Color.magenta);
-        //Debug.Log(pVonS);
-        //Debug.Break();
+
+                    //Debug.DrawRay(closestHit.point, pVonS, Color.magenta);
+                    //Debug.Log(pVonS);
+                    //Debug.Break();
 
         // Preserve velocity in that direction.
         Vector2 extraMovementNeeded = pVonS * remainingVelocity;

@@ -271,22 +271,32 @@ public class EntityController : MonoBehaviour
         else if (angleBetweenVelocityAndNormal < 0f) surfaceNormSide = -1f;
         else if (angleBetweenVelocityAndNormal > 0f) surfaceNormSide = 1f;
 
-        Debug.Log(surfaceNormSide);
-        //Debug.Break();
-
         // Reflect the unit vector along the surface of contact in the direction we find.
         unitAlongSurface *= surfaceNormSide;
 
-        Debug.DrawRay(closestHit.point, closestHit.normal, Color.yellow, 1f);
-        Debug.DrawRay(closestHit.point, velocity.normalized, Color.blue, 1f);
-        Debug.DrawRay(closestHit.point, deflectionVector, Color.green, 1f);
+        //Debug.DrawRay(closestHit.point, closestHit.normal, Color.yellow, 1f);
+        //Debug.DrawRay(closestHit.point, velocity.normalized, Color.blue, 1f);
+        //Debug.DrawRay(closestHit.point, deflectionVector, Color.green, 1f);
         //Debug.Log("Angle between velocity and surface normal: " + angleBetweenVelocityAndNormal);
         //Debug.Log(vectorDiff);
-        Debug.DrawRay(closestHit.point, unitAlongSurface, Color.magenta, 1f);
+        //Debug.DrawRay(closestHit.point, unitAlongSurface, Color.magenta, 1f);
         //Debug.Log("Velocity) " + Mathf.Sin(velocity.x) + ", " + Mathf.Sin(velocity.y));
 
+        // Calculate the vector projection of the velocity vector onto the unit vector along the surface.
+        // VDotS = Dot product between <velocity vector> and <unit vector along surface>.
+        // SDotS = Dot product between <unit vector along surface> and itself.
+        float VDotS = Vector2.Dot(velocity.normalized, unitAlongSurface);
+        float SDotS = Vector2.Dot(unitAlongSurface, unitAlongSurface);
+        Debug.Log("V*S = " + VDotS + ", S*S = " + SDotS);
+
+        // Vector projection formula.
+        Vector2 pVonS = (SDotS != 0f) ? (VDotS / SDotS) * unitAlongSurface : Vector2.zero;
+        Debug.DrawRay(closestHit.point, pVonS, Color.magenta);
+        Debug.Log(pVonS);
+        //Debug.Break();
+
         // Preserve velocity in that direction.
-        Vector2 extraMovementNeeded = unitAlongSurface * remainingVelocity;
+        Vector2 extraMovementNeeded = pVonS * remainingVelocity;
 
         // If the angle of the surface hit is less than our climbing angle (we can stand on it), enter GroundedState.
         if (Mathf.Abs(slopeNormal2OurNormal) < maxClimbAngle)
@@ -311,7 +321,7 @@ public class EntityController : MonoBehaviour
 
         // If we hit a surface, we need to propagate movement again in that direction.
         recursions++;
-        Debug.Log("Extra movement: " + extraMovementNeeded + ", Recursion#: " + recursions);
+        //Debug.Log("Extra movement: " + extraMovementNeeded + ", Recursion#: " + recursions);
         //Debug.Break();
         if (extraMovementNeeded == Vector2.zero) return;
         RaycastVelocity(extraMovementNeeded, ref recursions);

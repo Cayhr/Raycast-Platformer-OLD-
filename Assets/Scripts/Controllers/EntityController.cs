@@ -12,6 +12,7 @@ public class EntityController : MonoBehaviour
 {
     private Rigidbody2D rb;
     private static readonly float RAYCAST_INLET = 0.015f;
+    private static readonly int MAXIMUM_RAYCASTS = 5;
     //public CircleCollider2D mainCollider;
     //public BoxCollider2D headCollider;
     private VelocityCompoundMethod vOverride, vAdd, vMult;
@@ -125,7 +126,8 @@ public class EntityController : MonoBehaviour
         Vector2 scaledVelocity = currentVelocity * Time.deltaTime;
 
         Vector2 forNextFrame = Vector2.zero;
-        RaycastVelocity(scaledVelocity);
+        int recursions = 0;
+        RaycastVelocity(scaledVelocity, ref recursions);
         inclineVelocity = forNextFrame;
 
         // Sync after every transform translation.
@@ -133,7 +135,7 @@ public class EntityController : MonoBehaviour
 
     }
 
-    private void RaycastVelocity(Vector2 velocity)
+    private void RaycastVelocity(Vector2 velocity, ref int recursions)
     {
         bool DEBUG = true;
         // If we aren't moving, save computation cycles by not doing anything.
@@ -239,6 +241,14 @@ public class EntityController : MonoBehaviour
         }
 
         Vector2 toMove = closestDelta * unitDir;
+
+        // Cover concave surface cases.
+        if (recursions >= MAXIMUM_RAYCASTS && velocity.y < 0f)
+        {
+            SafetyFullBodyCast(toMove);
+            return;
+        }
+
         transform.Translate(toMove);
 
         // If after raycasting we did not get any hits, we can just stop.
@@ -248,29 +258,32 @@ public class EntityController : MonoBehaviour
         // If we ended up getting collisions: calculate the angle we hit the surface at.
         float slopeNormal2OurNormal = Vector2.Angle(closestHit.normal, normalVector);
         float remainingVelocity = velocityMag - closestDelta;
-        Debug.Log(toMove);
         if (remainingVelocity <= 0f) return;
 
         // Figure out along which direction of the surface should we move along it?
-        Vector2 vectorDiff = (velocity.normalized + closestHit.normal);
+        Vector2 deflectionVector = (velocity.normalized + closestHit.normal).normalized;
         Vector2 unitAlongSurface = (Vector2.Perpendicular(closestHit.normal)).normalized;
         float angleBetweenVelocityAndNormal = Vector2.SignedAngle(closestHit.normal, velocity);
         float surfaceNormSide = 0f;
 
         // If the velocity and normal vectors are exactly opposite sides, cancel the forces.
-        if (angleBetweenVelocityAndNormal == 180f) surfaceNormSide = 0f;
+        if (Mathf.Abs(angleBetweenVelocityAndNormal) >= 180f) surfaceNormSide = 0f;
         else if (angleBetweenVelocityAndNormal < 0f) surfaceNormSide = -1f;
         else if (angleBetweenVelocityAndNormal > 0f) surfaceNormSide = 1f;
+
+        Debug.Log(surfaceNormSide);
+        //Debug.Break();
 
         // Reflect the unit vector along the surface of contact in the direction we find.
         unitAlongSurface *= surfaceNormSide;
 
         Debug.DrawRay(closestHit.point, closestHit.normal, Color.yellow, 1f);
         Debug.DrawRay(closestHit.point, velocity.normalized, Color.blue, 1f);
-        Debug.DrawRay(closestHit.point, vectorDiff, Color.green, 1f);
+        Debug.DrawRay(closestHit.point, deflectionVector, Color.green, 1f);
         //Debug.Log("Angle between velocity and surface normal: " + angleBetweenVelocityAndNormal);
         //Debug.Log(vectorDiff);
         Debug.DrawRay(closestHit.point, unitAlongSurface, Color.magenta, 1f);
+        //Debug.Log("Velocity) " + Mathf.Sin(velocity.x) + ", " + Mathf.Sin(velocity.y));
 
         // Preserve velocity in that direction.
         Vector2 extraMovementNeeded = unitAlongSurface * remainingVelocity;
@@ -290,16 +303,32 @@ public class EntityController : MonoBehaviour
             }
             //If we were just moving and we hit a slope we can climb up.
         }
-        // If the slope is too great and we cannot climb it.
+        // If the slope is too great and we are trying to go up it.
         else
         {
+            if (surfaceNormSide != 0f) state = EntityMotionState.AIR;
         }
 
         // If we hit a surface, we need to propagate movement again in that direction.
-        RaycastVelocity(extraMovementNeeded);
+        recursions++;
+        Debug.Log("Extra movement: " + extraMovementNeeded + ", Recursion#: " + recursions);
+        //Debug.Break();
+        if (extraMovementNeeded == Vector2.zero) return;
+        RaycastVelocity(extraMovementNeeded, ref recursions);
 
         // Return the Vector2 for movement along the X axis of the entity.
         return;
+    }
+
+    /*
+     * Safety function for the raycast movement.
+     * If we raycasted too much, 
+     */
+    private void SafetyFullBodyCast(Vector2 velocity)
+    {
+            state = EntityMotionState.GROUNDED;
+            OnLanding();
+
     }
 
     /*

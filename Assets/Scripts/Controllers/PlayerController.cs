@@ -226,7 +226,7 @@ public class PlayerController : MonoBehaviour
     public void EndDash()
     {
         // At the end of the dash, convert any external velocity into momentum in the direction we are going in.
-        _EC.externalVelocity = _EC.externalVelocity.magnitude * dashDir;
+        _EC.externalVelocity = dashSpeed * dashDir;
         allowPlayerInfluence = true;
         _EC.TallyAirTime();
     }

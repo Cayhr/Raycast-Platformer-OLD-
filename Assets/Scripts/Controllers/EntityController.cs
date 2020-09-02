@@ -285,14 +285,16 @@ public class EntityController : MonoBehaviour
         // Calculate the vector projection of the velocity vector onto the unit vector along the surface.
         // VDotS = Dot product between <velocity vector> and <unit vector along surface>.
         // SDotS = Dot product between <unit vector along surface> and itself.
+        // OPTIMIZATION: SDotS will always be 1 unless we are hitting the surface at a perfect perpendicular angle.
+        //               We can skip division by SDotS and check if VDotS is 0 instead of SDotS.
         float VDotS = Vector2.Dot(velocity.normalized, unitAlongSurface);
-        float SDotS = Vector2.Dot(unitAlongSurface, unitAlongSurface);
-        Debug.Log("V*S = " + VDotS + ", S*S = " + SDotS);
+        //float SDotS = Vector2.Dot(unitAlongSurface, unitAlongSurface);
+        //Debug.Log("V*S = " + VDotS + ", S*S = " + SDotS);
 
         // Vector projection formula.
-        Vector2 pVonS = (SDotS != 0f) ? (VDotS / SDotS) * unitAlongSurface : Vector2.zero;
-        Debug.DrawRay(closestHit.point, pVonS, Color.magenta);
-        Debug.Log(pVonS);
+        Vector2 pVonS = (VDotS != 0f) ? (VDotS) * unitAlongSurface : Vector2.zero;
+        //Debug.DrawRay(closestHit.point, pVonS, Color.magenta);
+        //Debug.Log(pVonS);
         //Debug.Break();
 
         // Preserve velocity in that direction.

@@ -2,6 +2,13 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+/*
+ * The heart of the movement in GunNagi: 2D Raycasting.
+ * Every EntityController script has a RaycastModule in it that stores information specific to that Entity's currently assumed form.
+ * The form is just the BoxCollider2D and associated graphics information (anything else inside the GameObject that makes its
+ *      representation in the game world pretty such as lights, sprites, particle generators, and sound sources).
+ * The form is set by the EntityController itself, initializing it to its initially designated first form.
+ */
 public class RaycastModule
 {
     // CONSTANTS AND IMPORTANT INFO
@@ -38,10 +45,22 @@ public class RaycastModule
         SetFormForRaycastModule(formObj, _basePrecision, _heightPrecision);
     }
 
+    /*
+     * DO NOT CALL FROM OUTSIDE OF THIS CLASS. ONLY USE ENTITYCONTROLLER'S CHANGEFORM FUNCTION.
+     * This function is exposed because EntityController.ChangeForm() calls this function when you call that one.
+     * The form stuff is important only to the RaycastModule since it contains BoxCollider2D information.
+     * The form object stays pretty and is remembered in EntityController, while the backend info is sent to the RaycastModule.
+     */
     public void SetFormForRaycastModule(GameObject formObj, int _basePrecision, int _heightPrecision)
     {
+        BoxCollider2D collider = formObject.GetComponent<BoxCollider2D>();
+        if (collider == null)
+        {
+            Debug.LogError("No BoxCollider2D assocated with the formObject " + formObj + " on Entity " + owner);
+            return;
+        }
+        formCollider = collider;
         formObject = formObj;
-        formCollider = formObject.GetComponent<BoxCollider2D>();
         formBounds = formCollider.bounds;
 
         /* ================================================================================ 
@@ -82,6 +101,13 @@ public class RaycastModule
             relativeHeightPoints[i] = new Vector2(formBounds.extents.x, (subLengthHeight * i) - formBounds.extents.y);
     }
 
+    /*
+     * The only exposed method that directly moves the Entity.
+     * Call only when an EntityController.ChangeForm() is called.
+     * <CURRENT>: Each EntityController calls RaycastMovement() and passes in the Entity's current velocity,
+     *  which is calculated via CompoundVelocities() method in their own Update() function.
+     * <LATER>: Consolidate all Entities into an object pool, and manage their instantiation/update calls from that "main thread."
+     */
     public Vector2 RaycastMovement(Vector2 velocity)
     {
         // Confirm we can move
@@ -188,43 +214,16 @@ public class RaycastModule
     }
 
     /*
-     * Given the velocity
+     * 
      */
-    private Vector2[] CornersToCastFrom(bool[] cornerChecks)
-    {
-        int countedCorners = 0;
-        for (int i = 0; i < NUM_CORNERS; i++)
-            countedCorners += (cornerChecks[i]) ? 1 : 0;
-        int count = countedCorners;
-
-        // Calculate the points from which to raycast from.
-        Vector2[] points = new Vector2[count];
-
-        // iPoints will be used to iterate through the final array. It will go Corners > X points > Y points.
-        int iPoints = 0;
-
-        // Start with the corners.
-        for (int i = 0; i < NUM_CORNERS; i++)
-            if (cornerChecks[i])
-            {
-                // Idk why but we need to index the relativeCornerPos's backwards to make it align properly.
-                points[iPoints] = (Vector2)formObject.transform.position + relativeCornerPos[NUM_CORNERS - 1 - i];
-                iPoints++;
-            }
-
-        return points;
-    }
-
     private Vector2 RaycastVelocity(Vector2 velocity, ref int recursions, ref Vector2 iterationStep, bool cornered)
     {
 
-        //Debug.Log("Iteration: " + recursions + ", cornered: " + cornered);
         // raycastTangentHit is applied if our closest delta is less than or equal to RAYCAST_INLET.
         // In a situation where the entity is being raycasted into a concave surface (V shaped geometry),
         // eventually we will reach a point where a recursive raycast further into the corner will make
         // connections that result in remainingVelocity unchanging.
         bool raycastTangentHit = false;
-        bool DEBUG = true;
 
         // If we aren't moving, save computation cycles by not doing anything.
         if (velocity == Vector2.zero) return Vector2.zero;
@@ -257,7 +256,7 @@ public class RaycastModule
             // If the raycast did not hit a collider: Skip to the next raycast.
             if (!currentHit)
             {
-                if (DEBUG) Debug.DrawRay(origin + iterationStep, unitDir * castDist, Color.white);
+                            //if (DEBUG) Debug.DrawRay(origin + iterationStep, unitDir * castDist, Color.white);
                 continue;
             }
 
@@ -265,7 +264,7 @@ public class RaycastModule
             hits++;
 
             // If the raycast closestHit a collider: Find the point of contact, but skip if we closestHit something further than a previous raycast.
-            if (DEBUG) Debug.DrawRay(origin + iterationStep, unitDir * currentHit.distance, Color.red);
+                        //if (DEBUG) Debug.DrawRay(origin + iterationStep, unitDir * currentHit.distance, Color.red);
             float hitDist = currentHit.distance - RAYCAST_INLET;
             if (hitDist > closestDelta) continue;
             if (hitDist <= 0f)
@@ -286,7 +285,7 @@ public class RaycastModule
         if (raycastTangentHit && cornered)
         {
             owner.ConcaveLanding(velocity);
-            Debug.Log("Hit maximum depth in a concave surface");
+                        //Debug.Log("Hit maximum depth in a concave surface");
             return Vector2.zero;
         }
 
@@ -312,7 +311,6 @@ public class RaycastModule
         if (Mathf.Abs(angleBetweenVelocityAndNormal) >= 180f) surfaceNormSide = 0f;
         else if (angleBetweenVelocityAndNormal < 0f) surfaceNormSide = -1f;
         else if (angleBetweenVelocityAndNormal > 0f) surfaceNormSide = 1f;
-        Debug.Log(surfaceNormSide);
 
         // Deflect the unit vector along the surface of contact in the direction we find.
         unitAlongSurface *= surfaceNormSide;

@@ -7,7 +7,10 @@ public delegate void StateBasedAction();
 public enum FactionList { NEUTRAL, PLAYER, ENEMIES};
 public enum EntityMotionState { GROUNDED, AIR, CLUTCH };
 
-[RequireComponent(typeof(BoxCollider2D))]
+/*
+ * Forms are listed in the EntityController by a list, which is set by the developer in the Unity Inspector.
+ * Changing forms, however, go down to any logic that utilizes the EntityController.
+ */
 public class EntityController : MonoBehaviour
 {
     private Rigidbody2D rb;

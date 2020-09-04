@@ -181,7 +181,7 @@ public class PlayerController : MonoBehaviour
         if (isJumping)
         {
             isJumping = false;
-            _EC.ApplyVelocity(_EC.normalVector, 2f);
+            _EC.ApplyVelocity(Vector2.up, 2f);
             _EC.TallyAirTime();
         }
     }
@@ -310,7 +310,7 @@ public class PlayerController : MonoBehaviour
     {
         Vector2 final = Vector2.zero;
         final.x += (_EC.directionalInfluence.x * runSpeed) * (allowPlayerInfluence ? 1f : 0f);
-        if (isJumping) final += (_EC.normalVector * jumpVelocity);
+        if (isJumping) final.y += jumpVelocity;
         return final;
     }
 

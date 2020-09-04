@@ -53,7 +53,7 @@ public class RaycastModule
      */
     public void SetFormForRaycastModule(GameObject formObj, int _basePrecision, int _heightPrecision)
     {
-        BoxCollider2D collider = formObject.GetComponent<BoxCollider2D>();
+        BoxCollider2D collider = formObj.GetComponent<BoxCollider2D>();
         if (collider == null)
         {
             Debug.LogError("No BoxCollider2D assocated with the formObject " + formObj + " on Entity " + owner);

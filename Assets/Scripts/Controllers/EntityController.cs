@@ -318,31 +318,6 @@ public class EntityController : MonoBehaviour
         if (en.blacklist.Contains(faction)) return;
         en.OnHit(this);
     }
-
-    private void OnDrawGizmos()
-    {
-        if (!Application.isPlaying) return;
-        /*
-        for (int i = 0; i < rayPrecisionHeight; i++)
-        {
-            Gizmos.DrawSphere((Vector2)formBounds.center + relativeHeightPoints[i], 0.05f);
-        }
-        for (int i = 0; i < rayPrecisionBase; i++)
-        {
-            Gizmos.DrawSphere((Vector2)formBounds.center + relativeBasePoints[i], 0.05f);
-        }
-        for (int i = 0; i < rayPrecisionHeight; i++)
-        {
-            Gizmos.DrawSphere((Vector2)formBounds.center + (relativeHeightPoints[i] * -1f), 0.05f);
-        }
-        for (int i = 0; i < rayPrecisionBase; i++)
-        {
-            Gizmos.DrawSphere((Vector2)formBounds.center + (relativeBasePoints[i] * -1f), 0.05f);
-        }
-        */
-        //Gizmos.DrawSphere((Vector2)formBounds.min, .05f);
-        //Gizmos.DrawSphere((Vector2)formBounds.max, .05f);
-    }
 }
 /*
     *

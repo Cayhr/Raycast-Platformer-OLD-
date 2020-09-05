@@ -47,6 +47,7 @@ public class EntityController : MonoBehaviour
     public float subAirTime = 0;
     public float totalAirTime = 0;
     public Vector2 directionalInfluence = Vector2.zero;
+    private Vector2 forNextFrame = Vector2.zero;
 
     // Raycasting Variables
 
@@ -97,8 +98,6 @@ public class EntityController : MonoBehaviour
         sbaOnLanding = landing;
         sbaWhileInAir = inAir;
     }
-
-    private Vector2 forNextFrame = Vector2.zero;
 
     public void Update()
     {
@@ -312,11 +311,11 @@ public class EntityController : MonoBehaviour
     private void OnTriggerEnter2D(Collider2D collision)
     {
         // First check if the Trigger entered is a hitbox.
-        HitboxBase en;
-        en = collision.gameObject.GetComponent<HitboxBase>();
-        if (en == null) return;
-        if (en.blacklist.Contains(faction)) return;
-        en.OnHit(this);
+        HitboxBase hb;
+        hb = collision.gameObject.GetComponent<HitboxBase>();
+        if (hb == null) return;
+        if (hb.blacklist.Contains(faction)) return;
+        hb.OnHit(this);
     }
 }
 /*

@@ -13,6 +13,7 @@ public class RaycastModule
 {
     // CONSTANTS AND IMPORTANT INFO
     private const int NUM_CORNERS = 4;
+    private const int MIN_RAYS = 2;
     private const int TL = 0;
     private const int TR = 1;
     private const int BL = 2;
@@ -68,7 +69,6 @@ public class RaycastModule
            ================================================================================ */
         // Reallocate the bound points in memory.
         // We must have at least 2 rays for the edges of the BoxCollider's face.
-        const int MIN_RAYS = 2;
         rayPrecisionBase = Mathf.Clamp(_basePrecision, MIN_RAYS, int.MaxValue);
         rayPrecisionHeight = Mathf.Clamp(_heightPrecision, MIN_RAYS, int.MaxValue);
         relativeCornerPos = new Vector2[NUM_CORNERS];

@@ -15,7 +15,7 @@ public class PlayerController : MonoBehaviour
     public UnityEvent e_Land;
 
     private const string PLAYER_PROJECTILE_POOL_NAME = "Player";
-    private ObjectPoolController OBJ_POOL;
+    private ObjectPoolController OBJ_POOLER;
     private PlayerControl playerControls;
     private ActionTimer dashAction, attackAction;
 
@@ -35,6 +35,7 @@ public class PlayerController : MonoBehaviour
 
     [Header("Parameters")]
     [SerializeField] private int currentGunPower;
+    [SerializeField] private int currentHeat, maxHeat;
     [SerializeField] private float runSpeed;
     [SerializeField] private float jumpVelocity;
     [SerializeField] private float dashSpeed;
@@ -97,8 +98,8 @@ public class PlayerController : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        OBJ_POOL = ObjectPoolController.SharedInstance;
-        OBJ_POOL.CreateObjPool(PLAYER_PROJECTILE_POOL_NAME, bulletPrefabs[0], true);
+        OBJ_POOLER = ObjectPoolController.SharedInstance;
+        OBJ_POOLER.CreateObjPool(PLAYER_PROJECTILE_POOL_NAME, bulletPrefabs[0], true);
         _EC.SetVelocityFunctions(OverrideVelocities, CompoundVelocities, MultiplyVelocities);
         _EC.SetEventFunctions(OnLanding, WhileInAir);
         jumps = maxJumps;
@@ -279,7 +280,7 @@ public class PlayerController : MonoBehaviour
         attackAction.SetFunctions(null, EndOfRAttack);
         attackAction.SetTimes(gunAttackTime, gunAttackCooldown);
 
-        GameObject bullet = OBJ_POOL.PullFromPool(PLAYER_PROJECTILE_POOL_NAME);
+        GameObject bullet = OBJ_POOLER.PullFromPool(PLAYER_PROJECTILE_POOL_NAME);
         Vector2 dir = GetDirectionOfAttack();
         bullet.transform.position = (Vector2)transform.position + dir;
         bullet.transform.rotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(dir.y, dir.x));

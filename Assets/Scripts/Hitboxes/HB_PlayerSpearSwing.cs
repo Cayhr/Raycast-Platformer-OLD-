@@ -13,15 +13,6 @@ public class HB_PlayerSpearSwing : HitboxBase
     {
         // Apply knockback.
         en.ApplyVelocity(_PC.lastSwingDirection * 15f);
-    }
-
-    private void OnCollisionEnter2D(Collision2D collision)
-    {
-        EntityController en = collision.gameObject.GetComponent<EntityController>();
-        if (en != null)
-        {
-            Debug.Log("Hit : " + en.entityName);
-            OnHit(en);
-        }
+        Debug.Log("Hit : " + en.entityName);
     }
 }

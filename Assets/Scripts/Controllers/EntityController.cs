@@ -312,8 +312,8 @@ public class EntityController : MonoBehaviour
     private void OnTriggerEnter2D(Collider2D collision)
     {
         // First check if the Trigger entered is a hitbox.
-        HitboxFramework en;
-        en = collision.gameObject.GetComponent<HitboxFramework>();
+        HitboxBase en;
+        en = collision.gameObject.GetComponent<HitboxBase>();
         if (en == null) return;
         if (en.blacklist.Contains(faction)) return;
         en.OnHit(this);

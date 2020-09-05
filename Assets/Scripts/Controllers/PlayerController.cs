@@ -14,25 +14,27 @@ public class PlayerController : MonoBehaviour
 {
     public UnityEvent e_Land;
 
+    private const string PLAYER_PROJECTILE_POOL_NAME = "Player";
+    private ObjectPoolController OBJ_POOL;
     private PlayerControl playerControls;
-    private ActionTimer dashAction, meleeAction, gunAction;
+    private ActionTimer dashAction, attackAction;
 
     private const float COYOTE_TIME = 5f / 60f;
     private const float CROUCH_SPEED_MULT = 0.5f;
 
     [Header("References")]
-    [SerializeField] private GameObject swingHitbox;
     [SerializeField] private EntityController _EC;
+    [SerializeField] private GameObject swingHitbox;
+    [SerializeField] private GameObject[] bulletPrefabs;
 
     [Header("Runtime Statistics")]
-    [SerializeField] private int jumps;
-    [SerializeField] private bool crouching = false;
-    [SerializeField] private bool isJumping = false;
-    //[SerializeField] private bool isDashing = false;
-    [SerializeField] private bool canDash = true;
-    [SerializeField] private bool allowPlayerInfluence = true;
+    private int jumps;
+    private bool crouching = false;
+    private bool isJumping = false;
+    private bool allowPlayerInfluence = true;
 
     [Header("Parameters")]
+    [SerializeField] private int currentGunPower;
     [SerializeField] private float runSpeed;
     [SerializeField] private float jumpVelocity;
     [SerializeField] private float dashSpeed;
@@ -45,14 +47,16 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float gunAttackCooldown;
     [SerializeField] private float jumpTime;
     [SerializeField] private bool canAirDash = false;
+    private int totalBulletPrefabs;
 
     [Header("Runtime Trackers")]
-    [SerializeField] private float jumpTimeCounter;
-    [SerializeField] private Vector2 dashDir = Vector2.zero;
+    private float jumpTimeCounter;
+    private Vector2 dashDir = Vector2.zero;
     public Vector2 lastSwingDirection;
 
     private void Awake()
     {
+        // Initialize input manager stuff.
         playerControls = new PlayerControl();
 
         playerControls.Player.Jump.started += ctx =>
@@ -84,20 +88,24 @@ public class PlayerController : MonoBehaviour
             if (ctx.started)
                 InitiateRAttack();
         };
+
+        // Initialize some variables.
+        totalBulletPrefabs = bulletPrefabs.Length;
+        Mathf.Clamp(currentGunPower, 0, totalBulletPrefabs - 1);
     }
 
     // Start is called before the first frame update
     void Start()
     {
+        OBJ_POOL = ObjectPoolController.SharedInstance;
+        OBJ_POOL.CreateObjPool(PLAYER_PROJECTILE_POOL_NAME, bulletPrefabs[0], true);
         _EC.SetVelocityFunctions(OverrideVelocities, CompoundVelocities, MultiplyVelocities);
         _EC.SetEventFunctions(OnLanding, WhileInAir);
         jumps = maxJumps;
         dashAction = gameObject.AddComponent<ActionTimer>();
         dashAction.Init(null, EndDash, dashTime, dashCooldown, 0f);
-        meleeAction = gameObject.AddComponent<ActionTimer>();
-        meleeAction.Init(null, EndMAttack, meleeAttackTime, meleeAttackCooldown, 0f);
-        gunAction = gameObject.AddComponent<ActionTimer>();
-        gunAction.Init(null, EndRAttack, gunAttackTime, gunAttackCooldown, 0f);
+        attackAction = gameObject.AddComponent<ActionTimer>();
+        attackAction.Init(null, null, 0f, 0f, 0f);
         swingHitbox.SetActive(false);
         _EC.faction = FactionList.PLAYER;
     }
@@ -243,27 +251,20 @@ public class PlayerController : MonoBehaviour
 
     private void InitiateMAttack()
     {
-        if (!meleeAction.IsReady()) return;
-        if (meleeAction.IsActive()) return;
+        if (!CanAttack()) return;
+        attackAction.SetFunctions(null, EndOfMAttack);
+        attackAction.SetTimes(meleeAttackTime, meleeAttackCooldown);
 
-        // Figure out the direction the swing should face.
-        Vector2 dir = (_EC.directionalInfluence != Vector2.zero) ? _EC.directionalInfluence : _EC.GetForwardVector();
+        Vector2 dir = GetDirectionOfAttack();
+
+        // We cache the lastSwingDirection to store the direction player swung in at the moment of attack.
         lastSwingDirection = dir;
-
-        // On ground, we cannot attack downwards.
-        if (_EC.state == EntityMotionState.GROUNDED && dir.y < 0f) dir = _EC.GetForwardVector();
-
-        PositionAndStartMAttack(dir);
-    }
-
-    private void PositionAndStartMAttack(Vector2 dir)
-    {
         swingHitbox.transform.rotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg);
         swingHitbox.SetActive(true);
-        meleeAction.StartAction();
+        attackAction.StartAction();
     }
 
-    private void EndMAttack()
+    private void EndOfMAttack()
     {
         swingHitbox.SetActive(false);
     }
@@ -274,15 +275,29 @@ public class PlayerController : MonoBehaviour
 
     private void InitiateRAttack()
     {
-        if (!gunAction.IsReady()) return;
-        if (gunAction.IsActive()) return;
-        gunAction.StartAction();
+        if (!CanAttack()) return;
+        attackAction.SetFunctions(null, EndOfRAttack);
+        attackAction.SetTimes(gunAttackTime, gunAttackCooldown);
+
+        GameObject bullet = OBJ_POOL.PullFromPool(PLAYER_PROJECTILE_POOL_NAME);
+        Vector2 dir = GetDirectionOfAttack();
+        bullet.transform.position = (Vector2)transform.position + dir;
+        bullet.transform.rotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(dir.y, dir.x));
+        HB_PlayerEnergyShot script = bullet.GetComponent<HB_PlayerEnergyShot>();
+        script.speed = 45f;
+        Rigidbody2D projRigid = bullet.GetComponent<Rigidbody2D>();
+        projRigid.velocity = (dir * script.speed);
+        attackAction.StartAction();
     }
 
-    private void EndRAttack()
+    private void EndOfRAttack()
     {
 
     }
+
+    /*================================================================================
+     VELOCITY OVERRIDE FUNCTIONS
+     ================================================================================*/
 
     /*
      * The next two functions are axis velocity compound methods.
@@ -319,6 +334,28 @@ public class PlayerController : MonoBehaviour
         Vector2 final = Vector2.one;
         if (_EC.state == EntityMotionState.GROUNDED) final.x = crouching ? CROUCH_SPEED_MULT : 1f;
         return final;
+    }
+
+    /*================================================================================
+     UTILITY FUNCTIONS
+     ================================================================================*/
+
+    private bool CanAttack()
+    {
+        if (!attackAction.IsReady()) return false;
+        if (attackAction.IsActive()) return false;
+        return true;
+    }
+
+    private Vector2 GetDirectionOfAttack()
+    {
+        // Figure out the direction the swing should face.
+        Vector2 dir = (_EC.directionalInfluence != Vector2.zero) ? _EC.directionalInfluence : _EC.GetForwardVector();
+
+        // On ground, we cannot attack downwards.
+        if (_EC.state == EntityMotionState.GROUNDED && dir.y < 0f) dir = _EC.GetForwardVector();
+
+        return dir;
     }
 
     private void HitCeiling()

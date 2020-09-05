@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class HB_PlayerSpearSwing : HitboxFramework
+public class HB_PlayerSpearSwing : HitboxBase
 {
     [SerializeField] private PlayerController _PC;
     [SerializeField] private EntityController _EC;
@@ -13,5 +13,15 @@ public class HB_PlayerSpearSwing : HitboxFramework
     {
         // Apply knockback.
         en.ApplyVelocity(_PC.lastSwingDirection * 15f);
+    }
+
+    private void OnCollisionEnter2D(Collision2D collision)
+    {
+        EntityController en = collision.gameObject.GetComponent<EntityController>();
+        if (en != null)
+        {
+            Debug.Log("Hit : " + en.entityName);
+            OnHit(en);
+        }
     }
 }

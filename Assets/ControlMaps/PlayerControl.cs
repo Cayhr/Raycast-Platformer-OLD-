@@ -409,7 +409,7 @@ public class @PlayerControl : IInputActionCollection, IDisposable
                 {
                     ""name"": """",
                     ""id"": ""abe5bea3-ee0a-4522-8f0d-3ca254ed2930"",
-                    ""path"": ""<Keyboard>/f"",
+                    ""path"": ""<Keyboard>/v"",
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": ""Keyboard&Mouse"",
@@ -431,7 +431,7 @@ public class @PlayerControl : IInputActionCollection, IDisposable
                 {
                     ""name"": """",
                     ""id"": ""b7264e09-8824-4418-b03f-f99597a04711"",
-                    ""path"": ""<Keyboard>/c"",
+                    ""path"": ""<Keyboard>/x"",
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": ""Keyboard&Mouse"",
@@ -441,8 +441,8 @@ public class @PlayerControl : IInputActionCollection, IDisposable
                 },
                 {
                     ""name"": """",
-                    ""id"": ""dbb4d942-73bd-42eb-a102-7c48f5cbf49e"",
-                    ""path"": ""<Keyboard>/x"",
+                    ""id"": ""137f8ec3-45af-457c-92ad-56bfa70d7137"",
+                    ""path"": ""<Keyboard>/z"",
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": ""Keyboard&Mouse"",
@@ -453,10 +453,10 @@ public class @PlayerControl : IInputActionCollection, IDisposable
                 {
                     ""name"": """",
                     ""id"": ""abf63fd5-c179-4aa3-8581-a7b53390e7ac"",
-                    ""path"": ""<Keyboard>/z"",
+                    ""path"": ""<Keyboard>/shift"",
                     ""interactions"": """",
                     ""processors"": """",
-                    ""groups"": """",
+                    ""groups"": ""Keyboard&Mouse"",
                     ""action"": ""Equipment"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
@@ -464,10 +464,10 @@ public class @PlayerControl : IInputActionCollection, IDisposable
                 {
                     ""name"": """",
                     ""id"": ""20c689e0-0854-4966-92a9-8b5d33bba20c"",
-                    ""path"": ""<Keyboard>/v"",
+                    ""path"": ""<Keyboard>/c"",
                     ""interactions"": """",
                     ""processors"": """",
-                    ""groups"": """",
+                    ""groups"": ""Keyboard&Mouse"",
                     ""action"": ""AttackMelee"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false

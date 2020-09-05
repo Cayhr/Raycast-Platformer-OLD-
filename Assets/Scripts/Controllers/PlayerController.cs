@@ -26,6 +26,10 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private EntityController _EC;
     [SerializeField] private GameObject swingHitbox;
     [SerializeField] private GameObject[] bulletPrefabs;
+    [SerializeField] private SpriteRenderer swingHitboxSprite;
+    private const float COLOR_MAX = 255f;
+    private Color heatColor = new Color(255/COLOR_MAX, 100/COLOR_MAX, 100/COLOR_MAX);
+    private Color currentColor = Color.white;
 
     [Header("Runtime Statistics")]
     private int jumps;
@@ -33,19 +37,24 @@ public class PlayerController : MonoBehaviour
     private bool isJumping = false;
     private bool allowPlayerInfluence = true;
 
-    [Header("Parameters")]
+    [Header("Melee Attack Parameters")]
+    [SerializeField] private float meleeAttackTime;
+    [SerializeField] private float meleeAttackCooldown;
+    public float heatConsumption;
+
+    [Header("Gun Attack Parameters")]
     [SerializeField] private int currentGunPower;
-    [SerializeField] private int currentHeat, maxHeat;
+    public float currentHeat, maxHeat, generatedHeat, heatDecayPerSec, heatDecayDelay, heatDelayCounter;
+    [SerializeField] private float gunAttackTime;
+    [SerializeField] private float gunAttackCooldown;
+
+    [Header("Movement Parameters")]
     [SerializeField] private float runSpeed;
     [SerializeField] private float jumpVelocity;
     [SerializeField] private float dashSpeed;
     [SerializeField] private float dashTime;                                // Time spent while dashing.
     [SerializeField] private float dashCooldown;                            // Dash cooldown in seconds after a dash.
     public int maxJumps;
-    [SerializeField] private float meleeAttackTime;
-    [SerializeField] private float meleeAttackCooldown;
-    [SerializeField] private float gunAttackTime;
-    [SerializeField] private float gunAttackCooldown;
     [SerializeField] private float jumpTime;
     [SerializeField] private bool canAirDash = false;
     private int totalBulletPrefabs;
@@ -145,6 +154,22 @@ public class PlayerController : MonoBehaviour
         // Enable and disable the top half collider for the player when crouching.
         // TODO: Can optimize to not constantly change form!
         if (crouching) _EC.ChangeForm(1); else _EC.ChangeForm(0);
+
+        // Decay heat.
+        if (currentHeat > 0f && heatDelayCounter <= 0f)
+        {
+            currentHeat -= heatDecayPerSec * Time.deltaTime;
+            Mathf.Clamp(currentHeat, 0f, maxHeat);
+        }
+        if (heatDelayCounter > 0f)
+        {
+            heatDelayCounter -= Time.deltaTime;
+        }
+        if (currentColor != Color.white)
+        {
+            swingHitboxSprite.color = currentColor;
+            currentColor = Color.Lerp(currentColor, Color.white, 0.1f);
+        }
     }
 
     /*
@@ -162,6 +187,8 @@ public class PlayerController : MonoBehaviour
     {
         RestoreMovementOptions();
     }
+
+#region Jump Logic
 
     /*
      * [Ion Propulsion Jump]
@@ -195,9 +222,9 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    /*================================================================================
-     DASH ACTION LOGIC
-     ================================================================================*/
+#endregion
+
+#region Dash Action Logic
 
     /*
      * [Gravity Suspension Dash]
@@ -246,13 +273,21 @@ public class PlayerController : MonoBehaviour
         EndDash();
     }
 
-    /*================================================================================
-     MELEE ATTACK LOGIC
-     ================================================================================*/
+#endregion
+
+#region Melee Attack Logic
 
     private void InitiateMAttack()
     {
         if (!CanAttack()) return;
+
+        // Calculate if we consume heat.
+        if (currentHeat > 0f)
+        {
+            currentColor = heatColor;
+        }
+
+        // Calculate the combo we are currently on.
         attackAction.SetFunctions(null, EndOfMAttack);
         attackAction.SetTimes(meleeAttackTime, meleeAttackCooldown);
 
@@ -270,13 +305,24 @@ public class PlayerController : MonoBehaviour
         swingHitbox.SetActive(false);
     }
 
-    /*================================================================================
-     RANGED ATTACK LOGIC
-     ================================================================================*/
+#endregion
+
+#region Ranged Attack Logic
 
     private void InitiateRAttack()
     {
         if (!CanAttack()) return;
+        // We cannot fire if we are overheated!
+        if (currentHeat >= maxHeat) return;
+        currentHeat += generatedHeat;
+        if (currentHeat > maxHeat)
+        {
+            currentHeat = maxHeat;
+        }
+
+        // We always have a delay before heat decays.
+        heatDelayCounter = heatDecayDelay;
+
         attackAction.SetFunctions(null, EndOfRAttack);
         attackAction.SetTimes(gunAttackTime, gunAttackCooldown);
 
@@ -296,9 +342,9 @@ public class PlayerController : MonoBehaviour
 
     }
 
-    /*================================================================================
-     VELOCITY OVERRIDE FUNCTIONS
-     ================================================================================*/
+#endregion
+
+#region Velocity Override Functions
 
     /*
      * The next two functions are axis velocity compound methods.
@@ -337,9 +383,9 @@ public class PlayerController : MonoBehaviour
         return final;
     }
 
-    /*================================================================================
-     UTILITY FUNCTIONS
-     ================================================================================*/
+#endregion
+
+#region Utility Functions
 
     private bool CanAttack()
     {
@@ -375,6 +421,9 @@ public class PlayerController : MonoBehaviour
     {
         jumps = j;
     }
+
+#endregion
+
     private void OnEnable()
     {
         playerControls.Enable();

@@ -40,7 +40,7 @@ public class EntityController : MonoBehaviour
 
     [Header("Physics Parameters")]
     public bool gravityOn;
-    public float gravityCoeff, maxGravitySpeed, inertialDampening, dampeningCutoff, maxClimbAngle;
+    public float gravityCoeff, maxGravitySpeed, inertialDampening, dampeningCutoff, maxClimbAngle, knockbackResistance;
     [SerializeField] private int rayPrecisionBase, rayPrecisionHeight;    // The amount of extra points BETWEEN the 2 on the edges.
 
     [Header("Runtime Trackers")]
@@ -227,9 +227,7 @@ public class EntityController : MonoBehaviour
         }
     }
 
-    /*================================================================================
-     STATE BASED ACTION GENERALIZATION FUNCTIONS
-     ================================================================================*/
+    #region State-Based-Action Generalization Functions
 
     private void OnLanding()
     {
@@ -245,9 +243,9 @@ public class EntityController : MonoBehaviour
         sbaWhileInAir?.Invoke();
     }
 
-    /*================================================================================
-     UTILITY FUNCTIONS
-     ================================================================================*/
+    #endregion
+
+    #region Utility Functions
 
     public void TallyAirTime()
     {
@@ -270,14 +268,11 @@ public class EntityController : MonoBehaviour
         return Vector2.right * (facingRight ? 1f : -1f);
     }
 
-    public void ApplyVelocity(Vector2 force)
-    {
-        externalVelocity = force;
-    }
-
     public void ApplyVelocity(Vector2 dir, float mag)
     {
-        externalVelocity = dir * mag;
+        float adjustedMag = mag - knockbackResistance;
+        adjustedMag = Mathf.Clamp(adjustedMag, 0f, float.MaxValue);
+        if (adjustedMag > 0f) externalVelocity += dir * mag;
     }
 
     /*
@@ -307,6 +302,8 @@ public class EntityController : MonoBehaviour
         //    if (Mathf.Abs(externalVelocity.y) - inertialDampening < 0f) externalVelocity.y = 0f;
 
     }
+
+    #endregion
 
     private void OnTriggerEnter2D(Collider2D collision)
     {

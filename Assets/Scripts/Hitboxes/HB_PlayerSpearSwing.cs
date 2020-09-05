@@ -11,8 +11,13 @@ public class HB_PlayerSpearSwing : HitboxBase
 
     public override void OnHit(EntityController en)
     {
+        if (_PC.currentHeat > 0f)
+        {
+            float consumedHeat = (_PC.currentHeat > _PC.heatConsumption) ? _PC.heatConsumption : _PC.currentHeat;
+            _PC.currentHeat -= consumedHeat;
+        }
         // Apply knockback.
-        en.ApplyVelocity(_PC.lastSwingDirection * 15f);
+        en.ApplyVelocity(_PC.lastSwingDirection, 15f);
         Debug.Log("Hit : " + en.entityName);
     }
 }

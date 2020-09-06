@@ -30,7 +30,7 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private SpriteRenderer swingHitboxSprite;
     [SerializeField] private PlayerUIHeatEffect heatUIEffect;
     private const float COLOR_MAX = 255f;
-    private Color heatColor = new Color(255/COLOR_MAX, 100/COLOR_MAX, 100/COLOR_MAX);
+    public static Color heatColor = new Color(255/COLOR_MAX, 100/COLOR_MAX, 100/COLOR_MAX);
     private Color currentColor = Color.white;
 
     [Header("Runtime Statistics")]

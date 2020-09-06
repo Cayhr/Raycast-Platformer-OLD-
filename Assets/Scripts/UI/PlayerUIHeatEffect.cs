@@ -7,10 +7,12 @@ public class PlayerUIHeatEffect : MonoBehaviour
 {
     [SerializeField] private Slider heatSlider;
     [SerializeField] private RectTransform heatEffect;
-    [SerializeField] private Image heatImage;
+    [SerializeField] private Image heatImage, handleImage;
     private float targetHeatYScale, targetHeat, maxHeat;
     private const float overheatYScale = 1f;
     private const float normalYScale = .5f;
+    //private Color criticalHandle = new Color();
+    private Color normalHandle = Color.white;
 
     private void Start()
     {
@@ -28,11 +30,13 @@ public class PlayerUIHeatEffect : MonoBehaviour
     public void OverheatOn()
     {
         targetHeatYScale = overheatYScale;
+        handleImage.color = PlayerController.heatColor;
     }
 
     public void OverheatOff()
     {
         targetHeatYScale = normalYScale;
+        handleImage.color = normalHandle;
     }
 
     public void TargetValue(float heat) => targetHeat = heat;

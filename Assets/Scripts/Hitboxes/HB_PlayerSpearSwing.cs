@@ -11,7 +11,7 @@ public class HB_PlayerSpearSwing : HitboxBase
 
     public override void OnHit(EntityController en)
     {
-        if (_PC.currentHeat > 0f && _PC.criticalHeat)
+        if (_PC.currentHeat > 0f && _PC.overheating)
         {
             float consumedHeat = (_PC.currentHeat > _PC.heatConsumption) ? _PC.heatConsumption : _PC.currentHeat;
             _PC.AdjustCurrentHeat(-consumedHeat);

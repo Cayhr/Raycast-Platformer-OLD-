@@ -47,7 +47,7 @@ public class PlayerController : MonoBehaviour
     [Header("Gun Attack Parameters")]
     [SerializeField] private float gunDamage;
     public float currentHeat, maxHeat, generatedHeat, heatDecayPerSec, heatDecayDelay, heatDelayCounter;
-    public bool criticalHeat;
+    public bool overheating;
     [SerializeField] private float gunAttackTime;
     [SerializeField] private float gunAttackCooldown;
 
@@ -284,7 +284,7 @@ public class PlayerController : MonoBehaviour
         if (!CanAttack()) return;
 
         // Calculate if we consume heat.
-        if (currentHeat > 0f && criticalHeat)
+        if (currentHeat > 0f && overheating)
         {
             currentColor = heatColor;
         }
@@ -314,7 +314,7 @@ public class PlayerController : MonoBehaviour
     private void InitiateRAttack()
     {
         // We cannot fire if we are doing another attack or overheated.
-        if (!CanAttack() || criticalHeat || currentHeat >= maxHeat) return;
+        if (!CanAttack() || overheating || currentHeat >= maxHeat) return;
         AdjustCurrentHeat(generatedHeat);
 
         // We always have a delay before heat decays.
@@ -392,13 +392,13 @@ public class PlayerController : MonoBehaviour
 
         if (currentHeat >= maxHeat)
         {
-            criticalHeat = true;
+            overheating = true;
             currentHeat = maxHeat;
             heatUIEffect.OverheatOn();
         }
         else if (currentHeat <= 0f)
         {
-            criticalHeat = false;
+            overheating = false;
             currentHeat = 0f;
             heatUIEffect.OverheatOff();
         }

@@ -14,9 +14,7 @@ public class HB_PlayerSpearSwing : HitboxBase
         if (_PC.currentHeat > 0f && _PC.criticalHeat)
         {
             float consumedHeat = (_PC.currentHeat > _PC.heatConsumption) ? _PC.heatConsumption : _PC.currentHeat;
-            _PC.currentHeat -= consumedHeat;
-            if (_PC.currentHeat <= 0f) _PC.criticalHeat = false;
-            _PC.SetHeatSlider(_PC.currentHeat);
+            _PC.AdjustCurrentHeat(-consumedHeat);
         }
         // Apply knockback.
         en.ApplyVelocity(_PC.lastSwingDirection, 15f);

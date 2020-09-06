@@ -28,6 +28,8 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private GameObject swingHitbox;
     [SerializeField] private GameObject[] bulletPrefabs;
     [SerializeField] private SpriteRenderer swingHitboxSprite;
+    [SerializeField] private RectTransform heatUIEffect;
+    private float targetHeatYScale = 0f;
     private const float COLOR_MAX = 255f;
     private Color heatColor = new Color(255/COLOR_MAX, 100/COLOR_MAX, 100/COLOR_MAX);
     private Color currentColor = Color.white;
@@ -163,14 +165,10 @@ public class PlayerController : MonoBehaviour
         // Decay heat.
         if (currentHeat > 0f && heatDelayCounter <= 0f)
         {
-            currentHeat -= heatDecayPerSec * Time.deltaTime;
-            heatSlider.value = currentHeat;
-            if (currentHeat <= 0f)
-            {
-                criticalHeat = false;
-                currentHeat = 0f;
-            }
+            AdjustCurrentHeat(-heatDecayPerSec * Time.deltaTime);
         }
+        heatSlider.value = Mathf.Lerp(heatSlider.value, currentHeat, 0.5f);
+        heatUIEffect.localScale = new Vector2(1f, Mathf.Lerp(heatUIEffect.localScale.y, targetHeatYScale, 0.5f));
         if (heatDelayCounter > 0f)
         {
             heatDelayCounter -= Time.deltaTime;
@@ -323,14 +321,7 @@ public class PlayerController : MonoBehaviour
     {
         // We cannot fire if we are doing another attack or overheated.
         if (!CanAttack() || criticalHeat || currentHeat >= maxHeat) return;
-        currentHeat += generatedHeat;
-        if (currentHeat >= maxHeat)
-        {
-            criticalHeat = true;
-            currentHeat = maxHeat;
-        }
-
-        SetHeatSlider(currentHeat);
+        AdjustCurrentHeat(generatedHeat);
 
         // We always have a delay before heat decays.
         heatDelayCounter = heatDecayDelay;
@@ -400,10 +391,22 @@ public class PlayerController : MonoBehaviour
 
     #region Utility Functions
 
-    public void SetHeatSlider(float current)
+    public void AdjustCurrentHeat(float current)
     {
-        heatSlider.value = current;
+        currentHeat += current;
+        if (currentHeat >= maxHeat)
+        {
+            criticalHeat = true;
+            currentHeat = maxHeat;
+        }
+        else if (currentHeat <= 0f)
+        {
+            criticalHeat = false;
+            currentHeat = 0f;
+        }
         heatSlider.maxValue = maxHeat;
+        float targetScale = Mathf.Clamp(currentHeat / maxHeat, .4f, 1f);
+        targetHeatYScale = targetScale;
     }
 
     private bool CanAttack()

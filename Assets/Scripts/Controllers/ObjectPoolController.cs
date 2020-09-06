@@ -43,6 +43,7 @@ public class ObjectPoolController : MonoBehaviour
 		if (pool.expand && pool.queue.Count <= 0)
 		{
 			GameObject dupe = Instantiate(pool.original);
+			dupe.transform.parent = pool.poolContainer;
 			PooledObject scr = dupe.GetComponent<PooledObject>();
 			scr.sourcePoolName = poolName;
 			pool.takenOut.Add(dupe);
@@ -51,6 +52,7 @@ public class ObjectPoolController : MonoBehaviour
 		else if (pool.queue.Count > 0)
 		{
 			GameObject pooledObj = pool.queue.Dequeue();
+			pooledObj.transform.parent = pool.poolContainer;
 			pooledObj.SetActive(true);
 			pool.takenOut.Add(pooledObj);
 			return pooledObj;
@@ -96,6 +98,7 @@ public class ObjectPool
 	public GameObject original;
 	public Queue<GameObject> queue;
 	public HashSet<GameObject> takenOut;
+	public Transform poolContainer;
 	public bool expand;
 
 	public ObjectPool(string name, GameObject obj, bool exp = true)
@@ -104,6 +107,9 @@ public class ObjectPool
 		original = obj;
 		queue = new Queue<GameObject>();
 		takenOut = new HashSet<GameObject>();
-		expand = true;
+		expand = exp;
+		GameObject emptyPoolObject = new GameObject();
+		emptyPoolObject.transform.parent = ObjectPoolController.SharedInstance.transform;
+		poolContainer = emptyPoolObject.transform;
 	}
 }

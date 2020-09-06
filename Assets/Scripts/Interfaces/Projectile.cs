@@ -4,19 +4,30 @@ using UnityEngine;
 
 public abstract class Projectile : PooledObject
 {
-    public List<FactionList> blacklist;
+    private HashSet<FactionList> blacklist;
     public GameObject owner;
     protected Rigidbody2D rb;
 
     /*
      * The on hit function.
      */
+
+    private void Awake()
+    {
+        blacklist = new HashSet<FactionList>();
+    }
+
     public abstract void OnHit(EntityController en);
 
     protected EntityController EntityFromCollision(Collision2D collision)
     {
         EntityController en = collision.gameObject.GetComponent<EntityController>();
         return en;
+    }
+
+    public void BlacklistFaction(FactionList fac)
+    {
+        blacklist.Add(fac);
     }
     /*
     public void Init(int fac)

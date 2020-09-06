@@ -13,7 +13,7 @@ using UnityEngine.UI;
 
 public class PlayerController : MonoBehaviour
 {
-    public UnityEvent e_Land;
+    public static PlayerController SharedInstance;
 
     private const string PLAYER_PROJECTILE_POOL_NAME = "Player";
     private ObjectPoolController OBJ_POOLER;
@@ -28,12 +28,10 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private GameObject swingHitbox;
     [SerializeField] private GameObject[] bulletPrefabs;
     [SerializeField] private SpriteRenderer swingHitboxSprite;
-    [SerializeField] private RectTransform heatUIEffect;
-    private float targetHeatYScale = 0f;
+    [SerializeField] private PlayerUIHeatEffect heatUIEffect;
     private const float COLOR_MAX = 255f;
     private Color heatColor = new Color(255/COLOR_MAX, 100/COLOR_MAX, 100/COLOR_MAX);
     private Color currentColor = Color.white;
-    [SerializeField] private Slider heatSlider, hpSlider;
 
     [Header("Runtime Statistics")]
     private int jumps;
@@ -121,10 +119,8 @@ public class PlayerController : MonoBehaviour
         attackAction = gameObject.AddComponent<ActionTimer>();
         attackAction.Init(null, null, 0f, 0f, 0f);
         swingHitbox.SetActive(false);
+        heatUIEffect.SetMax(maxHeat);
         _EC.faction = FactionList.PLAYER;
-        heatSlider.maxValue = maxHeat;
-        heatSlider.minValue = 0f;
-        heatSlider.value = currentHeat;
     }
 
     // Update is called once per frame
@@ -167,8 +163,6 @@ public class PlayerController : MonoBehaviour
         {
             AdjustCurrentHeat(-heatDecayPerSec * Time.deltaTime);
         }
-        heatSlider.value = Mathf.Lerp(heatSlider.value, currentHeat, 0.5f);
-        heatUIEffect.localScale = new Vector2(1f, Mathf.Lerp(heatUIEffect.localScale.y, targetHeatYScale, 0.5f));
         if (heatDelayCounter > 0f)
         {
             heatDelayCounter -= Time.deltaTime;
@@ -394,19 +388,22 @@ public class PlayerController : MonoBehaviour
     public void AdjustCurrentHeat(float current)
     {
         currentHeat += current;
+        heatUIEffect.TargetValue(currentHeat);
+
         if (currentHeat >= maxHeat)
         {
             criticalHeat = true;
             currentHeat = maxHeat;
+            heatUIEffect.OverheatOn();
         }
         else if (currentHeat <= 0f)
         {
             criticalHeat = false;
             currentHeat = 0f;
+            heatUIEffect.OverheatOff();
         }
-        heatSlider.maxValue = maxHeat;
-        float targetScale = Mathf.Clamp(currentHeat / maxHeat, .4f, 1f);
-        targetHeatYScale = targetScale;
+        heatUIEffect.SetMax(maxHeat);
+        //float targetScale = Mathf.Clamp(targetHeat / maxHeat, normalYScale, targetHeatYScale);
     }
 
     private bool CanAttack()

@@ -36,7 +36,11 @@ public class ObjectPoolController : MonoBehaviour
 	 */
 	public GameObject PullFromPool(string poolName)
 	{
-		if (!pools.ContainsKey(poolName)) return null;
+		if (!pools.ContainsKey(poolName))
+		{
+			Debug.LogError("Pool `" + poolName + "` does not exist.");
+			return null;
+		}
 		ObjectPool pool = pools[poolName];
 
 		// If we attempted to grab an object out of the pool but there are none available.

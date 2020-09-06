@@ -15,6 +15,9 @@ public class HB_PlayerSpearSwing : HitboxBase
         {
             float consumedHeat = (_PC.currentHeat > _PC.heatConsumption) ? _PC.heatConsumption : _PC.currentHeat;
             _PC.AdjustCurrentHeat(-consumedHeat);
+
+            // We always have a delay before heat decays.
+            _PC.heatDelayCounter = _PC.heatDecayDelay;
         }
         // Apply knockback.
         en.ApplyVelocity(_PC.lastSwingDirection, 15f);

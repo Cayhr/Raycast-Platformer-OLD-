@@ -40,9 +40,7 @@ public class ObjectPoolController : MonoBehaviour
 		ObjectPool pool = pools[poolName];
 
 		// If we attempted to grab an object out of the pool but there are none available.
-		if (pool.queue.Count <= 0 && !pool.expand) return null;
-
-		if (pool.expand)
+		if (pool.expand && pool.queue.Count <= 0)
 		{
 			GameObject dupe = Instantiate(pool.original);
 			PooledObject scr = dupe.GetComponent<PooledObject>();
@@ -50,12 +48,16 @@ public class ObjectPoolController : MonoBehaviour
 			pool.takenOut.Add(dupe);
 			return dupe;
 		}
-		else
+		else if (pool.queue.Count > 0)
 		{
 			GameObject pooledObj = pool.queue.Dequeue();
 			pooledObj.SetActive(true);
 			pool.takenOut.Add(pooledObj);
 			return pooledObj;
+		}
+		else
+		{
+			return null;
 		}
 	}
 

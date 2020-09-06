@@ -198,7 +198,7 @@ public class PlayerController : MonoBehaviour
         RestoreMovementOptions();
     }
 
-#region Jump Logic
+    #region Jump Logic
 
     /*
      * [Ion Propulsion Jump]
@@ -232,9 +232,9 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-#endregion
+    #endregion
 
-#region Dash Action Logic
+    #region Dash Action Logic
 
     /*
      * [Gravity Suspension Dash]
@@ -283,9 +283,9 @@ public class PlayerController : MonoBehaviour
         EndDash();
     }
 
-#endregion
+    #endregion
 
-#region Melee Attack Logic
+    #region Melee Attack Logic
 
     private void InitiateMAttack()
     {
@@ -317,7 +317,7 @@ public class PlayerController : MonoBehaviour
 
 #endregion
 
-#region Ranged Attack Logic
+    #region Ranged Attack Logic
 
     private void InitiateRAttack()
     {
@@ -357,7 +357,7 @@ public class PlayerController : MonoBehaviour
 
     #endregion
 
-#region Velocity Override Functions
+    #region Velocity Override Functions
 
     /*
      * The next two functions are axis velocity compound methods.
@@ -396,9 +396,9 @@ public class PlayerController : MonoBehaviour
         return final;
     }
 
-#endregion
+    #endregion
 
-#region Utility Functions
+    #region Utility Functions
 
     public void SetHeatSlider(float current)
     {
@@ -441,7 +441,7 @@ public class PlayerController : MonoBehaviour
         jumps = j;
     }
 
-#endregion
+    #endregion
 
     private void OnEnable()
     {

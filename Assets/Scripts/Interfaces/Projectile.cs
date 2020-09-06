@@ -5,7 +5,8 @@ using UnityEngine;
 public abstract class Projectile : PooledObject
 {
     public List<FactionList> blacklist;
-    private Rigidbody2D rb;
+    public GameObject owner;
+    protected Rigidbody2D rb;
 
     /*
      * The on hit function.
@@ -22,12 +23,17 @@ public abstract class Projectile : PooledObject
     {
         faction = fac;
     }
+    */
 
     public void OnCollisionEnter2D(Collision2D collision)
     {
-        //OnHit(en);
+        if (collision.gameObject != owner)
+        {
+            EntityController en = EntityFromCollision(collision);
+            if (en != null) OnHit(en);
+            gameObject.SetActive(false);
+        }
     }
-    */
 
 
 }

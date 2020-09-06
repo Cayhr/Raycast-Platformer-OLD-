@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.Interactions;
 using UnityEngine.Events;
+using UnityEngine.UI;
 
 /* PlayerController | Kevin Chau
  * 
@@ -30,6 +31,7 @@ public class PlayerController : MonoBehaviour
     private const float COLOR_MAX = 255f;
     private Color heatColor = new Color(255/COLOR_MAX, 100/COLOR_MAX, 100/COLOR_MAX);
     private Color currentColor = Color.white;
+    [SerializeField] private Slider heatSlider, hpSlider;
 
     [Header("Runtime Statistics")]
     private int jumps;
@@ -43,8 +45,9 @@ public class PlayerController : MonoBehaviour
     public float heatConsumption;
 
     [Header("Gun Attack Parameters")]
-    [SerializeField] private int currentGunPower;
+    [SerializeField] private float gunDamage;
     public float currentHeat, maxHeat, generatedHeat, heatDecayPerSec, heatDecayDelay, heatDelayCounter;
+    public bool criticalHeat;
     [SerializeField] private float gunAttackTime;
     [SerializeField] private float gunAttackCooldown;
 
@@ -101,7 +104,6 @@ public class PlayerController : MonoBehaviour
 
         // Initialize some variables.
         totalBulletPrefabs = bulletPrefabs.Length;
-        Mathf.Clamp(currentGunPower, 0, totalBulletPrefabs - 1);
     }
 
     // Start is called before the first frame update
@@ -118,6 +120,9 @@ public class PlayerController : MonoBehaviour
         attackAction.Init(null, null, 0f, 0f, 0f);
         swingHitbox.SetActive(false);
         _EC.faction = FactionList.PLAYER;
+        heatSlider.maxValue = maxHeat;
+        heatSlider.minValue = 0f;
+        heatSlider.value = currentHeat;
     }
 
     // Update is called once per frame
@@ -159,7 +164,12 @@ public class PlayerController : MonoBehaviour
         if (currentHeat > 0f && heatDelayCounter <= 0f)
         {
             currentHeat -= heatDecayPerSec * Time.deltaTime;
-            Mathf.Clamp(currentHeat, 0f, maxHeat);
+            heatSlider.value = currentHeat;
+            if (currentHeat <= 0f)
+            {
+                criticalHeat = false;
+                currentHeat = 0f;
+            }
         }
         if (heatDelayCounter > 0f)
         {
@@ -282,7 +292,7 @@ public class PlayerController : MonoBehaviour
         if (!CanAttack()) return;
 
         // Calculate if we consume heat.
-        if (currentHeat > 0f)
+        if (currentHeat > 0f && criticalHeat)
         {
             currentColor = heatColor;
         }
@@ -311,14 +321,16 @@ public class PlayerController : MonoBehaviour
 
     private void InitiateRAttack()
     {
-        if (!CanAttack()) return;
-        // We cannot fire if we are overheated!
-        if (currentHeat >= maxHeat) return;
+        // We cannot fire if we are doing another attack or overheated.
+        if (!CanAttack() || criticalHeat || currentHeat >= maxHeat) return;
         currentHeat += generatedHeat;
-        if (currentHeat > maxHeat)
+        if (currentHeat >= maxHeat)
         {
+            criticalHeat = true;
             currentHeat = maxHeat;
         }
+
+        SetHeatSlider(currentHeat);
 
         // We always have a delay before heat decays.
         heatDelayCounter = heatDecayDelay;
@@ -332,6 +344,7 @@ public class PlayerController : MonoBehaviour
         bullet.transform.rotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(dir.y, dir.x));
         HB_PlayerEnergyShot script = bullet.GetComponent<HB_PlayerEnergyShot>();
         script.speed = 45f;
+        script.owner = gameObject;
         Rigidbody2D projRigid = bullet.GetComponent<Rigidbody2D>();
         projRigid.velocity = (dir * script.speed);
         attackAction.StartAction();
@@ -342,7 +355,7 @@ public class PlayerController : MonoBehaviour
 
     }
 
-#endregion
+    #endregion
 
 #region Velocity Override Functions
 
@@ -386,6 +399,12 @@ public class PlayerController : MonoBehaviour
 #endregion
 
 #region Utility Functions
+
+    public void SetHeatSlider(float current)
+    {
+        heatSlider.value = current;
+        heatSlider.maxValue = maxHeat;
+    }
 
     private bool CanAttack()
     {

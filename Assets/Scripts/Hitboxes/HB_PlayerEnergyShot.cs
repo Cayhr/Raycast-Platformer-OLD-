@@ -9,15 +9,11 @@ public class HB_PlayerEnergyShot : Projectile
 
     public override void OnHit(EntityController en)
     {
-        // Play some special FX!
-        en.health -= 1;
-    }
-
-    private void OnCollisionEnter2D(Collision2D collision)
-    {
-        Debug.Log("Hit something!");
-        EntityController en = EntityFromCollision(collision);
-        OnHit(en);
-        gameObject.SetActive(false);
+        if (en.gameObject != owner)
+        {
+            // Play some special FX!
+            Debug.Log("Hit `" + en.gameObject + "`");
+            en.health -= 1;
+        }
     }
 }

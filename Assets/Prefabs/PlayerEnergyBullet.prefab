@@ -97,6 +97,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 67be181b5cae6de4abb79aba6bd67618, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  sourcePoolName: 
   blacklist: 01000000
   speed: 0
   direction: {x: 0, y: 0}
@@ -108,7 +109,7 @@ Rigidbody2D:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2120015722183506757}
-  m_BodyType: 1
+  m_BodyType: 0
   m_Simulated: 1
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0

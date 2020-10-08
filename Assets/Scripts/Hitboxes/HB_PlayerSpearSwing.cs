@@ -20,7 +20,15 @@ public class HB_PlayerSpearSwing : HitboxBase
             _PC.heatDelayCounter = _PC.heatDecayDelay;
         }
         // Apply knockback.
-        en.ApplyVelocity(_PC.lastSwingDirection, 15f);
+        const float airKB = 50f;
+        float knockback = 15f;
+        en.ApplyVelocity(_PC.lastSwingDirection, knockback);
+        if (_EC.state == EntityMotionState.AIR)
+        {
+            knockback = airKB;
+            _EC.TallyAirTime();
+        }
+        _EC.ApplyVelocity(_PC.lastSwingDirection, -knockback);
         Debug.Log("Hit : " + en.entityName);
     }
 }

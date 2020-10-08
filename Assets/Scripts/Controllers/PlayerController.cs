@@ -60,7 +60,6 @@ public class PlayerController : MonoBehaviour
     public int maxJumps;
     [SerializeField] private float jumpTime;
     [SerializeField] private bool canAirDash = false;
-    private int totalBulletPrefabs;
 
     [Header("Runtime Trackers")]
     private float jumpTimeCounter;
@@ -101,9 +100,6 @@ public class PlayerController : MonoBehaviour
             if (ctx.started)
                 InitiateRAttack();
         };
-
-        // Initialize some variables.
-        totalBulletPrefabs = bulletPrefabs.Length;
     }
 
     // Start is called before the first frame update

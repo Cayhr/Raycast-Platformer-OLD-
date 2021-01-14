@@ -40,11 +40,13 @@ public class PlayerController : MonoBehaviour
     private bool allowPlayerInfluence = true;
 
     [Header("Melee Attack Parameters")]
+    public bool spearObtained;
     [SerializeField] private float meleeAttackTime;
     [SerializeField] private float meleeAttackCooldown;
     public float heatConsumption;
 
     [Header("Gun Attack Parameters")]
+    public bool gunObtained;
     [SerializeField] private float gunDamage;
     public float currentHeat, maxHeat, generatedHeat, heatDecayPerSec, heatDecayDelay, heatDelayCounter;
     public bool overheating;
@@ -303,7 +305,7 @@ public class PlayerController : MonoBehaviour
         swingHitbox.SetActive(false);
     }
 
-#endregion
+    #endregion
 
     #region Ranged Attack Logic
 

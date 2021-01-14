@@ -271,16 +271,7 @@ public class EntityController : MonoBehaviour
     public void ApplyVelocity(Vector2 dir, float mag)
     {
         // If we pass in a negative velocity, we absVal it and invert the dir vector.
-        bool invert = false;
-        float finalMag = mag;
-        if (finalMag < 0f)
-        {
-            finalMag = Mathf.Abs(mag);
-            invert = true;
-        }
-        float adjustedMag = finalMag - knockbackResistance;
-        adjustedMag = Mathf.Clamp(adjustedMag, 0f, float.MaxValue);
-        if (adjustedMag > 0f) externalVelocity += (invert ? -dir : dir)  * finalMag;
+        externalVelocity += dir * mag;
     }
 
     /*
